@@ -15,6 +15,7 @@
 		"dev": "next dev --turbo",
 		"postinstall": "prisma generate",
 		"preview": "next build && next start",
+		"script": "dotenv -e .env -- tsx --",
 		"start": "next start",
 		"typecheck": "tsc --noEmit"
 	},
@@ -32,6 +33,7 @@
 		"react-dom": "^19.0.0",
 		"server-only": "^0.0.1",
 		"superjson": "^2.2.1",
+		"tsx": "^4.20.6",
 		"zod": "^3.24.2"
 	},
 	"devDependencies": {
@@ -40,8 +42,10 @@
 		"@types/node": "^20.14.10",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
+		"dotenv-cli": "^10.0.0",
 		"postcss": "^8.5.3",
 		"prisma": "^6.5.0",
+		"puppeteer": "^24.23.0",
 		"tailwindcss": "^4.0.15",
 		"typescript": "^5.8.2"
 	},

@@ -72,3 +72,12 @@ model VerificationToken {
 
     @@unique([identifier, token])
 }
+
+model Newsletter {
+    id        String   @id @default(cuid())
+    email     String
+    message   String?
+    createdAt DateTime @default(now())
+
+    @@index([email])
+}

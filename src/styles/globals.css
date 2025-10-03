@@ -1,6 +1,76 @@
 @import "tailwindcss";
 
 @theme {
-	--font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+	--font-sans: var(--font-funnel-sans), ui-sans-serif, system-ui, sans-serif,
 		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+	/* Custom animations */
+	--animate-fade-in: fade-in 0.6s ease-out;
+	--animate-slide-up: slide-up 0.6s ease-out;
+	--animate-glow: glow 2s ease-in-out infinite alternate;
+}
+
+/* Keyframe animations */
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(30px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes glow {
+	from {
+		box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+	}
+	to {
+		box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+	}
+}
+
+/* Utility classes */
+.animate-fade-in {
+	animation: fade-in 0.6s ease-out;
+}
+
+.animate-slide-up {
+	animation: slide-up 0.6s ease-out;
+}
+
+.animate-delay-100 {
+	animation-delay: 100ms;
+}
+
+.animate-delay-200 {
+	animation-delay: 200ms;
+}
+
+.animate-delay-300 {
+	animation-delay: 300ms;
+}
+
+.animate-delay-400 {
+	animation-delay: 400ms;
+}
+
+/* Background patterns */
+.bg-dot-pattern {
+	background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+	background-size: 30px 30px;
+}
+
+.bg-radial-gradient {
+	background: radial-gradient(circle at 50% 0%, rgba(30, 30, 30, 1) 0%, rgba(0, 0, 0, 1) 100%);
 }
