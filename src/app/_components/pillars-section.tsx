@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Container, Section, SectionHeader } from "./ui";
 
 interface Challenge {
 	challenge: string;
@@ -200,24 +201,19 @@ function PillarCard({ pillar }: { pillar: Pillar }) {
 
 export function PillarsSection() {
 	return (
-		<section className="w-full px-2 py-8 md:px-6 md:py-20">
-			<div className="mx-auto w-full max-w-6xl">
-				<div className="mb-8 text-center md:mb-16">
-					<h2 className="mb-2 font-bold text-3xl md:mb-4 md:text-5xl">
-						Pilares da Plataforma
-					</h2>
-					<p className="text-base text-gray-400 md:text-xl">
-						Um ecossistema completo que resolve desafios reais da gestão
-						condominial
-					</p>
-				</div>
+		<Section>
+			<Container size="2xl">
+				<SectionHeader
+					title="Pilares da Plataforma"
+					subtitle="Um ecossistema completo que resolve desafios reais da gestão condominial"
+				/>
 
 				<div className="space-y-2 md:space-y-6">
 					{pillars.map((pillar) => (
 						<PillarCard key={pillar.id} pillar={pillar} />
 					))}
 				</div>
-			</div>
-		</section>
+			</Container>
+		</Section>
 	);
 }
