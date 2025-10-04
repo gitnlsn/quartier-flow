@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import type { Metadata } from "next";
-import { Funnel_Sans } from "next/font/google";
+import { Saira } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 
@@ -11,17 +11,17 @@ export const metadata: Metadata = {
 	icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-const funnelSans = Funnel_Sans({
+const saira = Saira({
 	subsets: ["latin"],
-	variable: "--font-funnel-sans",
+	variable: "--font-saira",
 });
 
 export default function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<html lang="pt-BR" className={`${funnelSans.variable}`}>
-			<body className={funnelSans.className}>
+		<html lang="pt-BR" className={`${saira.variable}`}>
+			<body className={`${saira.className}`}>
 				<TRPCReactProvider>{children}</TRPCReactProvider>
 			</body>
 		</html>

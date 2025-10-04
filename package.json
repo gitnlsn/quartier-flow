@@ -5,11 +5,6 @@
 	"type": "module",
 	"scripts": {
 		"build": "next build",
-		"check": "biome check .",
-		"check:unsafe": "biome check --write --unsafe .",
-		"check:write": "biome check --write .",
-		"db:generate": "prisma migrate dev",
-		"db:migrate": "prisma migrate deploy",
 		"db:push": "prisma db push",
 		"db:studio": "prisma studio",
 		"dev": "next dev --turbo",
@@ -17,7 +12,9 @@
 		"preview": "next build && next start",
 		"script": "dotenv -e .env -- tsx --",
 		"start": "next start",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "npm run typecheck:tsc; npm run typecheck:biome",
+		"typecheck:biome": "biome check --write --unsafe .",
+		"typecheck:tsc": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@auth/prisma-adapter": "^2.7.2",
@@ -27,6 +24,7 @@
 		"@trpc/client": "^11.0.0",
 		"@trpc/react-query": "^11.0.0",
 		"@trpc/server": "^11.0.0",
+		"motion": "^12.23.22",
 		"next": "^15.2.3",
 		"next-auth": "5.0.0-beta.25",
 		"react": "^19.0.0",

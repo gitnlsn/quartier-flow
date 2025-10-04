@@ -1,80 +1,89 @@
 import { HydrateClient } from "~/trpc/server";
+import { CircularText } from "./_components/circular-text";
 import { NewsletterForm } from "./_components/newsletter-form";
+import { PillarsSection } from "./_components/pillars-section";
 
 export default async function Home() {
 	return (
 		<HydrateClient>
 			<main className="relative min-h-screen bg-black text-white">
 				{/* Background layers */}
-				<div className="fixed inset-0 bg-radial-gradient" />
-				<div className="fixed inset-0 bg-dot-pattern" />
+				<div className="fixed inset-0 overflow-hidden bg-radial-gradient" />
+				<div className="fixed inset-0 overflow-hidden bg-dot-pattern" />
 
 				{/* Content */}
 				<div className="relative z-10">
 					{/* Hero Section */}
-					<section className="flex min-h-screen flex-col items-center justify-center px-6 py-20">
-						<div className="max-w-5xl text-center">
-							<h1 className="animate-fade-in mb-8 text-6xl font-extrabold leading-tight tracking-tight md:text-8xl">
+					<section className="flex min-h-screen w-full flex-col items-center justify-center px-2 py-8 md:px-6 md:py-20">
+						<div className="w-full max-w-5xl text-center">
+							<h1 className="mb-4 animate-fade-in font-extrabold text-4xl leading-tight tracking-tight md:mb-8 md:text-6xl lg:text-8xl">
 								Gestão de Condomínios
 								<span className="block bg-gradient-to-r from-gray-400 to-gray-600 bg-clip-text text-transparent">
 									Simplificada
 								</span>
 							</h1>
-							<p className="animate-slide-up animate-delay-100 mb-16 text-xl leading-relaxed text-gray-300 md:text-2xl">
-								A solução completa para administrar seu
-								condomínio com eficiência, transparência e
-								modernidade.
-							</p>
+							<div className="mt-10 mb-8 flex animate-delay-100 animate-slide-up justify-center md:mb-16">
+								<CircularText
+									text="Quartier Flow * Quartier Flow * "
+									onHover="speedUp"
+									spinDuration={10}
+									className="md:scale-150"
+								/>
+							</div>
 
 							{/* Features */}
-							<div className="mb-20 grid gap-6 md:grid-cols-3">
-								<div className="group animate-slide-up animate-delay-200 border border-gray-800 bg-black/50 p-8 backdrop-blur-sm transition-all duration-300 hover:border-white hover:shadow-2xl hover:shadow-white/10">
-									<div className="mb-4 text-4xl">🔍</div>
-									<h3 className="mb-3 text-xl font-bold">
+							<div className="mb-8 grid gap-2 md:mb-20 md:grid-cols-3 md:gap-6">
+								<div className="group animate-delay-200 animate-slide-up border border-gray-800 bg-black/50 p-2 backdrop-blur-sm transition-all duration-300 hover:border-white hover:shadow-2xl hover:shadow-white/10 md:p-8">
+									<div className="mb-2 text-2xl md:mb-4 md:text-4xl">🔍</div>
+									<h3 className="mb-1 font-bold text-base md:mb-3 md:text-xl">
 										Transparência Total
 									</h3>
-									<p className="text-gray-400">
-										Acompanhe todas as finanças e decisões
-										em tempo real
+									<p className="text-gray-400 text-sm md:text-base">
+										Acompanhe todas as finanças e decisões em tempo real
 									</p>
 								</div>
-								<div className="group animate-slide-up animate-delay-300 border border-gray-800 bg-black/50 p-8 backdrop-blur-sm transition-all duration-300 hover:border-white hover:shadow-2xl hover:shadow-white/10">
-									<div className="mb-4 text-4xl">💬</div>
-									<h3 className="mb-3 text-xl font-bold">
+								<div className="group animate-delay-300 animate-slide-up border border-gray-800 bg-black/50 p-2 backdrop-blur-sm transition-all duration-300 hover:border-white hover:shadow-2xl hover:shadow-white/10 md:p-8">
+									<div className="mb-2 text-2xl md:mb-4 md:text-4xl">💬</div>
+									<h3 className="mb-1 font-bold text-base md:mb-3 md:text-xl">
 										Comunicação Fácil
 									</h3>
-									<p className="text-gray-400">
-										Mantenha todos os moradores informados e
-										conectados
+									<p className="text-gray-400 text-sm md:text-base">
+										Mantenha todos os moradores informados e conectados
 									</p>
 								</div>
-								<div className="group animate-slide-up animate-delay-400 border border-gray-800 bg-black/50 p-8 backdrop-blur-sm transition-all duration-300 hover:border-white hover:shadow-2xl hover:shadow-white/10">
-									<div className="mb-4 text-4xl">⚡</div>
-									<h3 className="mb-3 text-xl font-bold">
+								<div className="group animate-delay-400 animate-slide-up border border-gray-800 bg-black/50 p-2 backdrop-blur-sm transition-all duration-300 hover:border-white hover:shadow-2xl hover:shadow-white/10 md:p-8">
+									<div className="mb-2 text-2xl md:mb-4 md:text-4xl">⚡</div>
+									<h3 className="mb-1 font-bold text-base md:mb-3 md:text-xl">
 										Automatização
 									</h3>
-									<p className="text-gray-400">
-										Reduza trabalho manual com processos
-										inteligentes
+									<p className="text-gray-400 text-sm md:text-base">
+										Reduza trabalho manual com processos inteligentes
 									</p>
 								</div>
 							</div>
+						</div>
+					</section>
 
-							{/* CTA */}
-							<div className="animate-slide-up animate-delay-400 flex flex-col items-center">
-								<h2 className="mb-10 text-4xl font-bold">
-									Transforme a gestão do seu condomínio
-								</h2>
+					{/* Pillars Section */}
+					<PillarsSection />
+
+					{/* CTA Section */}
+					<section className="w-full px-2 py-8 md:px-6 md:py-20">
+						<div className="mx-auto w-full max-w-4xl text-center">
+							<h2 className="mb-6 font-bold text-2xl md:mb-10 md:text-4xl">
+								Transforme a gestão do seu condomínio
+							</h2>
+							<div className="flex justify-center">
 								<NewsletterForm />
 							</div>
 						</div>
 					</section>
 
 					{/* Footer */}
-					<footer className="border-t border-gray-800/50 py-12 text-center text-sm text-gray-500">
+					<footer className="border-gray-800/50 border-t py-6 text-center text-gray-500 text-xs md:py-12 md:text-sm">
 						<p>
-							© {new Date().getFullYear()} Quartier Flow. Todos
-							os direitos reservados.
+							© {new Date().getFullYear()} Quartier Flow. Todos os direitos
+							reservados.
 						</p>
 					</footer>
 				</div>
