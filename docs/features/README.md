@@ -40,6 +40,7 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 | [17](17-asaas-payments-platform.md) | Asaas payments platform (all money flows) | MVP (foundation, cross-cutting) — implemented slice 1 (sandbox) | 02 |
 | [18](18-platform-billing.md) | Platform billing (seats + add-ons) | MVP | 02, 17, 19 |
 | [19](19-administradora-manager-area.md) | App area for all users + administradora management | MVP — implemented slice 1 | 01, 02, 17, 18 |
+| [20](20-condominium-workspace-navigation.md) | Condominium workspace navigation (switcher + modules) | MVP (cross-cutting) — implemented | 19 |
 
 ## Platform notes that apply to every feature
 

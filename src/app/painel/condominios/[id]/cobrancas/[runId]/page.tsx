@@ -104,10 +104,10 @@ export default function RunPage() {
 	return (
 		<div className="space-y-6">
 			<a
-				href={`/painel/condominios/${id}?aba=cobrancas`}
+				href={`/painel/condominios/${id}/cobrancas`}
 				className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
 			>
-				<ArrowLeft className="size-4" aria-hidden /> {data.condominium.name}
+				<ArrowLeft className="size-4" aria-hidden /> Cobranças
 			</a>
 			<PageTitle
 				title={`Cobranças de ${month}/${year}`}

@@ -11,7 +11,9 @@ datasource db {
   // Further reading:
   // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
   // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-  url      = env("DATABASE_URL")
+  // Neon: pooled URL for the app, direct URL for schema changes (db push / migrate).
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Post {
@@ -180,6 +182,7 @@ model Condominium {
   charges       Charge[]
   billingItems  BillingItem[]
   unitItems     UnitBillingItem[]
+  expenses      Expense[]
 
   @@index([administradoraId])
 }
@@ -454,4 +457,35 @@ model ChargeLine {
   createdAt   DateTime @default(now())
 
   @@index([chargeId])
+}
+
+// ---------------------------------------------------------------------------
+// Financial transparency (docs/features/05)
+// ---------------------------------------------------------------------------
+
+/**
+ * An expense paid by the condominium, optionally with its invoice/receipt.
+ * The file lives in the private "attachments" bucket (Neon Object Storage);
+ * we store its key and serve it through short-lived signed URLs.
+ */
+model Expense {
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  category      String
+  supplier      String?
+  description   String
+  amountCents   Int
+  paidAt        DateTime    @db.Date
+  createdById   String?
+
+  attachmentKey  String?
+  attachmentName String?
+  attachmentType String?
+  attachmentSize Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([condominiumId, paidAt])
 }

@@ -85,7 +85,7 @@ Copy `.env.example` to `.env` and configure:
 - **Typography:** Geist for body text (`font-app`), Saira only for the brand name
 - **Colors:** theme tokens only (`bg-background`, `text-muted-foreground`...); near-black primary; status tokens `success` (paid), `warning` (due), `destructive` (overdue)
 - **Shape & density:** rounded corners (`--radius`), 44px+ touch targets, larger text
-- **Layout:** `AppShell` (`src/app/painel/_components/app-shell.tsx`): sidebar grouped by role on desktop, bottom tab bar (Início, Cobranças, Mais) on mobile
+- **Layout:** `AppShell` (`src/app/painel/_components/app-shell.tsx`): sidebar with a condominium switcher and module groups (Financeiro, Cadastro...) on desktop, bottom tab bar (Início, Cobranças, Mais) on mobile. Each condominium module is a route under `/painel/condominios/[id]/` (see `docs/features/20`); add new modules there, never as tabs
 - **Primitives:** use `src/app/painel/_components/ui.tsx` (PageTitle, Card, Field, Button with `pending`, Badge tones, ConfirmButton = AlertDialog, EmptyState, Loading); never browser `confirm()`
 
 **Custom Animations (globals.css):**

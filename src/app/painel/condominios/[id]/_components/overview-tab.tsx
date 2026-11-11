@@ -15,18 +15,12 @@ import type { ReactNode } from "react";
 import { formatPeriod } from "~/lib/billing-items";
 import { formatBRL } from "~/lib/br";
 import { type RouterOutputs, api } from "~/trpc/react";
+import type { CondoModule } from "../../../_components/condo-nav";
 import { Badge, Button, Card, Loading } from "../../../_components/ui";
 import { expectedTotal } from "./billing-tab";
 
 type Condo = RouterOutputs["condominium"]["get"];
 type Charge = RouterOutputs["billing"]["charges"][number];
-export type TabKey =
-	| "visao"
-	| "unidades"
-	| "cobrancas"
-	| "acompanhamento"
-	| "historico"
-	| "config";
 
 type Attention = {
 	key: string;
@@ -148,7 +142,7 @@ export function OverviewTab({
 	goTo,
 }: {
 	condo: Condo;
-	goTo: (tab: TabKey) => void;
+	goTo: (module: CondoModule) => void;
 }) {
 	const now = new Date();
 	const thisMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;

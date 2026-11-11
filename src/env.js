@@ -33,6 +33,13 @@ export const env = createEnv({
 		CRON_SECRET: z.string().min(16),
 
 		DATABASE_URL: z.string().url(),
+
+		// Neon Object Storage (S3-compatible), pulled by `neon env pull` / `neon deploy`.
+		AWS_ACCESS_KEY_ID: z.string(),
+		AWS_SECRET_ACCESS_KEY: z.string(),
+		AWS_ENDPOINT_URL_S3: z.string().url(),
+		AWS_REGION: z.string(),
+
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
@@ -65,6 +72,12 @@ export const env = createEnv({
 		CRON_SECRET: process.env.CRON_SECRET,
 
 		DATABASE_URL: process.env.DATABASE_URL,
+
+		AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+		AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+		AWS_ENDPOINT_URL_S3: process.env.AWS_ENDPOINT_URL_S3,
+		AWS_REGION: process.env.AWS_REGION,
+
 		NODE_ENV: process.env.NODE_ENV,
 	},
 	/**

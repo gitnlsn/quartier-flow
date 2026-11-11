@@ -3,17 +3,33 @@
 import { cn } from "cn";
 import {
 	Building2,
+	Check,
+	ChevronsUpDown,
 	CreditCard,
 	Home,
 	Landmark,
+	LayoutDashboard,
+	LayoutGrid,
 	LogOut,
 	Menu,
 	Receipt,
+	ReceiptText,
+	Settings,
+	Users,
+	Wallet,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Separator } from "~/components/ui/separator";
 import {
 	Sheet,
@@ -23,6 +39,7 @@ import {
 	SheetTrigger,
 } from "~/components/ui/sheet";
 import { authClient } from "~/lib/auth-client";
+import { CONDO_BASE, condoPath, parseCondoPath, switchPath } from "./condo-nav";
 
 type NavItem = {
 	href: string;
@@ -30,47 +47,86 @@ type NavItem = {
 	icon: ReactNode;
 	exact?: boolean;
 };
-type NavGroup = { title: string; items: NavItem[] };
+type NavGroup = { title?: string; items: NavItem[] };
+type CondoOption = { id: string; name: string };
 
-function buildGroups(isAdmin: boolean, isSindico: boolean): NavGroup[] {
-	const groups: NavGroup[] = [
-		{
-			title: "Minha área",
-			items: [
-				{ href: "/painel", label: "Início", icon: <Home />, exact: true },
-				{
-					href: "/painel/cobrancas",
-					label: "Minhas cobranças",
-					icon: <Receipt />,
-				},
-			],
-		},
-	];
+/**
+ * Sidebar groups. With a condominium selected, its modules come first,
+ * grouped by area (docs/features/20); then the personal area and, for
+ * administradora admins, the company-level pages.
+ */
+function buildGroups(isAdmin: boolean, condoId: string | null): NavGroup[] {
+	const groups: NavGroup[] = [];
+	if (condoId) {
+		groups.push(
+			{
+				items: [
+					{
+						href: condoPath(condoId),
+						label: "Visão geral",
+						icon: <LayoutDashboard />,
+						exact: true,
+					},
+				],
+			},
+			{
+				title: "Financeiro",
+				items: [
+					{
+						href: condoPath(condoId, "cobrancas"),
+						label: "Cobranças",
+						icon: <ReceiptText />,
+					},
+					{
+						href: condoPath(condoId, "despesas"),
+						label: "Despesas",
+						icon: <Wallet />,
+					},
+				],
+			},
+			{
+				title: "Cadastro",
+				items: [
+					{
+						href: condoPath(condoId, "unidades"),
+						label: "Unidades e moradores",
+						icon: <Users />,
+					},
+					{
+						href: condoPath(condoId, "config"),
+						label: "Configurações",
+						icon: <Settings />,
+					},
+				],
+			},
+		);
+	}
+	groups.push({
+		title: "Minha área",
+		items: [
+			{ href: "/painel", label: "Início", icon: <Home />, exact: true },
+			{
+				href: "/painel/cobrancas",
+				label: "Minhas cobranças",
+				icon: <Receipt />,
+			},
+		],
+	});
 	if (isAdmin) {
 		groups.push({
 			title: "Administradora",
 			items: [
 				{
-					href: "/painel/condominios",
-					label: "Condomínios",
-					icon: <Building2 />,
+					href: CONDO_BASE,
+					label: "Todos os condomínios",
+					icon: <LayoutGrid />,
+					exact: true,
 				},
 				{ href: "/painel/plano", label: "Plano", icon: <CreditCard /> },
 				{
 					href: "/painel/onboarding",
 					label: "Conta de recebimento",
 					icon: <Landmark />,
-				},
-			],
-		});
-	} else if (isSindico) {
-		groups.push({
-			title: "Síndico",
-			items: [
-				{
-					href: "/painel/condominios",
-					label: "Meus condomínios",
-					icon: <Building2 />,
 				},
 			],
 		});
@@ -93,10 +149,12 @@ function NavLinks({
 	return (
 		<nav className="space-y-6">
 			{groups.map((group) => (
-				<div key={group.title} className="space-y-1">
-					<p className="px-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-						{group.title}
-					</p>
+				<div key={group.title ?? group.items[0]?.href} className="space-y-1">
+					{group.title && (
+						<p className="px-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+							{group.title}
+						</p>
+					)}
 					{group.items.map((item) => {
 						const active = isActive(pathname, item);
 						return (
@@ -120,6 +178,105 @@ function NavLinks({
 				</div>
 			))}
 		</nav>
+	);
+}
+
+/**
+ * Picks the condominium the modules act on. Switching keeps the current
+ * module, so an administradora can compare Despesas across buildings.
+ */
+function CondoSwitcher({
+	condos,
+	activeId,
+	showAll,
+	className,
+}: {
+	condos: CondoOption[];
+	activeId: string | null;
+	showAll: boolean;
+	className?: string;
+}) {
+	const pathname = usePathname();
+	const router = useRouter();
+	const [filter, setFilter] = useState("");
+	const active = condos.find((c) => c.id === activeId);
+	const query = filter.trim().toLocaleLowerCase("pt-BR");
+	const visible = query
+		? condos.filter((c) => c.name.toLocaleLowerCase("pt-BR").includes(query))
+		: condos;
+
+	return (
+		<DropdownMenu onOpenChange={(open) => !open && setFilter("")}>
+			<DropdownMenuTrigger asChild>
+				<button
+					type="button"
+					className={cn(
+						"flex min-h-11 w-full items-center gap-2 rounded-md border bg-background px-3 py-2 text-left text-sm shadow-xs hover:bg-muted",
+						className,
+					)}
+				>
+					<Building2 className="size-4 shrink-0" aria-hidden />
+					<span className="min-w-0 flex-1">
+						<span className="block text-muted-foreground text-xs">
+							Condomínio
+						</span>
+						<span className="block truncate font-medium">
+							{active?.name ?? "Escolha um condomínio"}
+						</span>
+					</span>
+					<ChevronsUpDown
+						className="size-4 shrink-0 text-muted-foreground"
+						aria-hidden
+					/>
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				align="start"
+				className="app max-h-[70vh] w-(--radix-dropdown-menu-trigger-width) min-w-64 overflow-y-auto"
+			>
+				{condos.length > 8 && (
+					<div className="p-1">
+						<input
+							value={filter}
+							onChange={(e) => setFilter(e.target.value)}
+							// Typing must not trigger the menu's type-ahead.
+							onKeyDown={(e) => e.stopPropagation()}
+							placeholder="Buscar condomínio"
+							aria-label="Buscar condomínio"
+							className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+						/>
+					</div>
+				)}
+				<DropdownMenuLabel>Condomínios</DropdownMenuLabel>
+				{visible.map((condo) => (
+					<DropdownMenuItem
+						key={condo.id}
+						className="min-h-10"
+						onSelect={() => router.push(switchPath(pathname, condo.id))}
+					>
+						<span className="flex-1 truncate">{condo.name}</span>
+						{condo.id === activeId && <Check aria-hidden />}
+					</DropdownMenuItem>
+				))}
+				{visible.length === 0 && (
+					<p className="px-2 py-2 text-muted-foreground text-sm">
+						Nenhum condomínio encontrado.
+					</p>
+				)}
+				{showAll && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							className="min-h-10"
+							onSelect={() => router.push(CONDO_BASE)}
+						>
+							<LayoutGrid aria-hidden />
+							Todos os condomínios
+						</DropdownMenuItem>
+					</>
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
@@ -147,6 +304,8 @@ function SignOut({ className }: { className?: string }) {
 /**
  * App frame for every user: sidebar on desktop; on phones a top bar and a
  * bottom tab bar with the resident essentials, plus "Mais" for the rest.
+ * Administradora admins and síndicos pick a condominium in the switcher;
+ * the sidebar then lists that condominium's modules.
  */
 export function AppShell({
 	children,
@@ -155,6 +314,8 @@ export function AppShell({
 	contextName,
 	isAdmin,
 	isSindico,
+	condos,
+	lastCondoId,
 }: {
 	children: ReactNode;
 	userName: string;
@@ -162,17 +323,35 @@ export function AppShell({
 	contextName: string | null;
 	isAdmin: boolean;
 	isSindico: boolean;
+	condos: CondoOption[];
+	lastCondoId: string | null;
 }) {
 	const pathname = usePathname();
 	const [menuOpen, setMenuOpen] = useState(false);
-	const groups = buildGroups(isAdmin, isSindico);
+
+	// The condominium in the URL wins; elsewhere, reopen the last one used.
+	const fromUrl = parseCondoPath(pathname)?.condominiumId;
+	const known = (id: string | null | undefined) =>
+		id && condos.some((c) => c.id === id) ? id : null;
+	const activeCondoId =
+		known(fromUrl) ?? known(lastCondoId) ?? condos[0]?.id ?? null;
+	const hasCondos = (isAdmin || isSindico) && condos.length > 0;
+
+	const groups = buildGroups(isAdmin, hasCondos ? activeCondoId : null);
+	const switcher = hasCondos ? (
+		<CondoSwitcher
+			condos={condos}
+			activeId={activeCondoId}
+			showAll={isAdmin || condos.length > 1}
+		/>
+	) : null;
 	const tabs: NavItem[] = [
 		{ href: "/painel", label: "Início", icon: <Home />, exact: true },
 		{ href: "/painel/cobrancas", label: "Cobranças", icon: <Receipt /> },
 	];
 
 	const brand = (
-		<a href="/painel" className="block">
+		<a href="/painel" className="block min-w-0">
 			<span className="font-bold font-sans text-lg tracking-tight">
 				Quartier Flow
 			</span>
@@ -195,7 +374,8 @@ export function AppShell({
 		<div className="app min-h-screen">
 			{/* Desktop sidebar */}
 			<aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r bg-card p-4 md:flex">
-				<div className="mb-8 px-3">{brand}</div>
+				<div className="mb-4 px-3">{brand}</div>
+				{switcher && <div className="mb-6">{switcher}</div>}
 				<div className="flex-1 overflow-y-auto">
 					<NavLinks groups={groups} />
 				</div>
@@ -204,9 +384,10 @@ export function AppShell({
 				<SignOut className="mt-2 w-full" />
 			</aside>
 
-			{/* Mobile top bar */}
-			<header className="sticky top-0 z-30 flex items-center justify-between border-b bg-card/95 px-4 py-3 backdrop-blur md:hidden">
+			{/* Mobile top bar: brand and, for managers, the condominium switcher */}
+			<header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-card/95 px-4 py-3 backdrop-blur md:hidden">
 				{brand}
+				{switcher && <div className="w-1/2 max-w-56 shrink-0">{switcher}</div>}
 			</header>
 
 			<main className="px-4 pt-6 pb-28 md:ml-64 md:px-8 md:pt-10 md:pb-10">
