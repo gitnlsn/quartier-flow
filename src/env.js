@@ -19,6 +19,19 @@ export const env = createEnv({
 		AUTH_GOOGLE_ID: z.string(),
 		AUTH_GOOGLE_SECRET: z.string(),
 
+		// Asaas (docs/features/17). In .env, escape the key's leading "$" as "\$".
+		ASAAS_API_KEY: z.string().startsWith("$aact_"),
+		ASAAS_BASE_URL: z
+			.string()
+			.url()
+			.default("https://api-sandbox.asaas.com/v3"),
+		// Sent by Asaas in the "asaas-access-token" header of every webhook.
+		ASAAS_WEBHOOK_TOKEN: z.string().min(32).max(255),
+		// Public URL of /api/webhooks/asaas (unset locally: no public URL to call).
+		ASAAS_WEBHOOK_URL: z.string().url().optional(),
+		// Protects /api/cron/* (Vercel Cron sends "Authorization: Bearer <secret>").
+		CRON_SECRET: z.string().min(16),
+
 		DATABASE_URL: z.string().url(),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
@@ -44,6 +57,12 @@ export const env = createEnv({
 		BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
 		AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
 		AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
+
+		ASAAS_API_KEY: process.env.ASAAS_API_KEY,
+		ASAAS_BASE_URL: process.env.ASAAS_BASE_URL,
+		ASAAS_WEBHOOK_TOKEN: process.env.ASAAS_WEBHOOK_TOKEN,
+		ASAAS_WEBHOOK_URL: process.env.ASAAS_WEBHOOK_URL,
+		CRON_SECRET: process.env.CRON_SECRET,
 
 		DATABASE_URL: process.env.DATABASE_URL,
 		NODE_ENV: process.env.NODE_ENV,

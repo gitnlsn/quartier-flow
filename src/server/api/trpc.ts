@@ -131,3 +131,21 @@ export const protectedProcedure = t.procedure
 			},
 		});
 	});
+
+/**
+ * Administradora admin procedure (docs/features/19)
+ *
+ * Requires a signed-in user who is an admin of an administradora and injects
+ * `ctx.administradoraId`. Every query in the management area must be scoped by it.
+ */
+export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+	const member = await ctx.db.administradoraMember.findFirst({
+		where: { userId: ctx.session.user.id, role: "admin" },
+		select: { administradoraId: true },
+		orderBy: { createdAt: "asc" },
+	});
+	if (!member) {
+		throw new TRPCError({ code: "FORBIDDEN" });
+	}
+	return next({ ctx: { administradoraId: member.administradoraId } });
+});

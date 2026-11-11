@@ -1,6 +1,6 @@
 # 02 — Condominium, Units & Residents
 
-**Status:** Proposed · **Phase:** MVP (foundation) · **Depends on:** 01
+**Status:** Implemented (slice 1, Nov/2026) · **Phase:** MVP (foundation) · **Depends on:** 01
 
 ## Summary
 The core registry every other feature references: condominiums, blocks/towers, units,
@@ -92,3 +92,10 @@ Plus `Pet` and `Vehicle` tables keyed by `unitId`.
 
 ## Market references
 - uCondo offers pet registration ([Group Software](https://www.groupsoftware.com.br/blog/aplicativo-para-gestao-de-condominios)).
+
+## Implementation (slice 1)
+- Models in `prisma/schema.prisma`: `Administradora`, `AdministradoraMember`, `Condominium`, `Unit` (`monthlyAmountCents` override), `Membership`, `User.cpf`.
+- Management UI: `/painel/condominios` (create), condominium page tabs **Unidades** (add by list/range `101-110`, per-unit amount) and **Moradores** (invite, payer, remove).
+- **Spreadsheet import** (CSV/XLSX): column mapping with auto-guess, server-side dry run per row (invalid email/CPF, missing unit, duplicates, payer without CPF, already registered), optional unit creation and invite emails. Code: `src/server/people.ts`, `import-people.tsx`. Excel numeric CPFs get leading zeros restored.
+- Access: `src/server/access.ts` — síndicos see their condominiums read-only; administradora admins manage.
+- Not yet: CSV export, pets/vehicles, move-out flow beyond "Remover", tenant/owner visibility rules.

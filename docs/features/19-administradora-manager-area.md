@@ -1,6 +1,6 @@
 # 19 — Administradora Manager Area
 
-**Status:** Proposed · **Phase:** MVP (later in the MVP) · **Depends on:** 01, 02, 17, 18
+**Status:** Implemented (slice 1, Nov/2026) · **Phase:** MVP (later in the MVP) · **Depends on:** 01, 02, 17, 18
 
 ## Summary
 The administradora's back office: manage its condominiums and user accounts, complete
@@ -47,3 +47,9 @@ its payment-account KYC, and see its Quartier Flow bill.
 - Can one administradora have several admin users with different permissions?
 - Do self-managed condominiums (no administradora) exist? If so, model them as an
   administradora of one condominium.
+
+## Implementation (slice 1)
+- **One area for every user** at `/painel` (`AppShell`): residents (Minhas cobranças), síndicos (read-only condominiums), administradora admins (everything residents/síndicos see in their condominiums + management).
+- Self-signup at `/cadastro` (CNPJ validated, rate-limited) → sign-in link → onboarding wizard `/painel/onboarding` (company data → plan → Asaas account/KYC).
+- Light shadcn/ui theme scoped to the app area (see CLAUDE.md "App area design system").
+- Not yet: multiple admin users per administradora, email change with session revocation, audit log screen.

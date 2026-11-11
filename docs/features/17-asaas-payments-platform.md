@@ -1,6 +1,6 @@
 # 17 — Asaas Payments Platform (cross-cutting)
 
-**Status:** Proposed · **Phase:** MVP (foundation) · **Depends on:** 02
+**Status:** Implemented (slice 1, sandbox, Nov/2026) · **Phase:** MVP (foundation) · **Depends on:** 02
 **Used by:** 03, 04, 05, 06, 09, 18, 19
 
 ## Decision
@@ -225,3 +225,10 @@ docs.asaas.com: autenticação, criação de subcontas, onboarding e envio de do
 detalhamento do fluxo de aprovação, cobranças via boleto / Pix, guia de cobranças,
 criando um cliente, webhooks (introdução, FAQ, eventos, webhook para cobranças,
 situação da conta), split de pagamentos e split em cobranças avulsas, notificações.
+
+## Implementation (slice 1)
+- Client and modules: `src/server/asaas/` (`client`, `accounts`, `customers`, `payments`, `webhook`). Secrets: `ASAAS_API_KEY` (escape `$` as `\$` in `.env`), `ASAAS_WEBHOOK_TOKEN`, optional `ASAAS_WEBHOOK_URL`.
+- Subaccount creation returns the key in `accessToken.apiKey` (object, not string); stored AES-GCM encrypted (`src/server/crypto.ts`). Creation recovers an existing subaccount by CNPJ (`GET /accounts?cpfCnpj=`).
+- Webhook `/api/webhooks/asaas`: token check, idempotent store (`WebhookEvent`), 200 then process via `after()`.
+- Verified in sandbox: subaccount creation/recovery, customers, payment creation path. **Blocked until Split is enabled** in the sandbox account (Integrações > Segurança > Habilitar Split).
+- Sandbox notes: shared environment (well-known test CNPJs are taken), KYC isn't auto-approved (simulate with an `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED` webhook locally).

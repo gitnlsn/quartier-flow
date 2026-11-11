@@ -73,12 +73,20 @@ Copy `.env.example` to `.env` and configure:
 - `src/app/_components/ui/` - Reusable UI primitives (Button, Container, Section, etc.)
 - `src/app/_components/layouts/` - Layout components (blog-layout, etc.)
 
-**Design System:**
+**Design System (marketing site: landing, blog, institutional pages):**
 - **Typography:** Saira font family (Google Fonts)
 - **Color Scheme:** Black (#000) and white (#FFF) only - no grays in primary palette
 - **Design Language:** Sharp edges (NO rounded corners), minimal padding (p-2 mobile standard)
 - **Animations:** Only entrance animations (fade-in, slide-up) - NO scale or bounce effects
 - **Responsive:** Mobile-first with p-2 (8px) mobile, scaling up for desktop
+
+**App area design system (`/painel`, `/entrar`, `/cadastro`), used daily by residents:**
+- **shadcn/ui** components in `src/components/ui/` (style `radix-nova`, `cn` from the `cn` package); light theme scoped to the `.app` class in `globals.css`, so it never affects the marketing site
+- **Typography:** Geist for body text (`font-app`), Saira only for the brand name
+- **Colors:** theme tokens only (`bg-background`, `text-muted-foreground`...); near-black primary; status tokens `success` (paid), `warning` (due), `destructive` (overdue)
+- **Shape & density:** rounded corners (`--radius`), 44px+ touch targets, larger text
+- **Layout:** `AppShell` (`src/app/painel/_components/app-shell.tsx`): sidebar grouped by role on desktop, bottom tab bar (Início, Cobranças, Mais) on mobile
+- **Primitives:** use `src/app/painel/_components/ui.tsx` (PageTitle, Card, Field, Button with `pending`, Badge tones, ConfirmButton = AlertDialog, EmptyState, Loading); never browser `confirm()`
 
 **Custom Animations (globals.css):**
 - `.animate-fade-in` - Opacity 0 to 1

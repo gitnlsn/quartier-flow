@@ -45,6 +45,12 @@ model User {
   accounts      Account[]
   posts         Post[]
 
+  // Brazilian CPF (digits only). Required by Asaas for whoever pays a unit's charges.
+  cpf                 String?
+  administradoraRoles AdministradoraMember[]
+  memberships         Membership[]
+  paymentCustomer     PaymentCustomer?
+
   @@unique([email])
   @@map("user")
 }
@@ -114,4 +120,248 @@ model Newsletter {
   createdAt DateTime @default(now())
 
   @@index([email])
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy: Administradora -> Condominium -> Unit (docs/features/02, 19)
+// ---------------------------------------------------------------------------
+
+model Administradora {
+  id            String   @id @default(cuid())
+  name          String
+  cnpj          String   @unique // digits only
+  companyType   String? // Asaas: LIMITED | ASSOCIATION | MEI | INDIVIDUAL
+  email         String
+  mobilePhone   String?
+  incomeValue   Int? // monthly revenue in BRL, required by Asaas KYC
+  postalCode    String?
+  address       String?
+  addressNumber String?
+  complement    String?
+  province      String? // bairro
+  status        String   @default("onboarding") // onboarding | active
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  members       AdministradoraMember[]
+  condominiums  Condominium[]
+  plans         AdministradoraPlan[]
+  payoutAccount PayoutAccount?
+}
+
+model AdministradoraMember {
+  id               String         @id @default(cuid())
+  administradoraId String
+  administradora   Administradora @relation(fields: [administradoraId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role             String         @default("admin")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([administradoraId, userId])
+  @@index([userId])
+}
+
+model Condominium {
+  id               String         @id @default(cuid())
+  administradoraId String
+  administradora   Administradora @relation(fields: [administradoraId], references: [id], onDelete: Cascade)
+  name             String
+  cnpj             String?
+  address          String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  units         Unit[]
+  memberships   Membership[]
+  billingConfig BillingConfig?
+  billingRuns   BillingRun[]
+  charges       Charge[]
+
+  @@index([administradoraId])
+}
+
+model Unit {
+  id                 String      @id @default(cuid())
+  condominiumId      String
+  condominium        Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  block              String      @default("") // "" when the building has no blocks
+  number             String
+  monthlyAmountCents Int? // overrides BillingConfig.defaultAmountCents
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  memberships Membership[]
+  charges     Charge[]
+
+  @@unique([condominiumId, block, number])
+  @@index([condominiumId])
+}
+
+model Membership {
+  id                     String      @id @default(cuid())
+  userId                 String
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  condominiumId          String
+  condominium            Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  unitId                 String?
+  unit                   Unit?       @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  role                   String // resident | sindico
+  residentType           String? // owner | tenant | dependent
+  financiallyResponsible Boolean     @default(false)
+  endedAt                DateTime?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  @@index([condominiumId])
+  @@index([unitId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Platform plans (docs/features/18). Prices are placeholders until defined.
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id                String   @id @default(cuid())
+  key               String   @unique
+  name              String
+  description       String
+  residentSeatCents Int
+  sindicoSeatCents  Int
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscriptions AdministradoraPlan[]
+}
+
+model AdministradoraPlan {
+  id               String         @id @default(cuid())
+  administradoraId String
+  administradora   Administradora @relation(fields: [administradoraId], references: [id], onDelete: Cascade)
+  planId           String
+  plan             Plan           @relation(fields: [planId], references: [id])
+  startedAt        DateTime       @default(now())
+  endedAt          DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([administradoraId])
+}
+
+// ---------------------------------------------------------------------------
+// Payments via Asaas (docs/features/03, 17)
+// ---------------------------------------------------------------------------
+
+model PayoutAccount {
+  id               String         @id @default(cuid())
+  administradoraId String         @unique
+  administradora   Administradora @relation(fields: [administradoraId], references: [id], onDelete: Cascade)
+  asaasAccountId   String         @unique
+  walletId         String
+  apiKeyEncrypted  String? // subaccount key (returned once), AES-GCM via src/server/crypto.ts
+  kycStatus        String         @default("pending") // pending | awaiting_approval | approved | rejected
+  onboardingUrl    String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model PaymentCustomer {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asaasCustomerId String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BillingConfig {
+  id                 String      @id @default(cuid())
+  condominiumId      String      @unique
+  condominium        Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  enabled            Boolean     @default(false)
+  mode               String      @default("manual") // manual | automatic
+  defaultAmountCents Int         @default(0)
+  dueDay             Int         @default(10) // 1-28
+  generationDay      Int         @default(1) // 1-28, day the run is prepared (and sent if automatic)
+  finePercent        Decimal     @default(2) @db.Decimal(5, 2)
+  interestPercent    Decimal     @default(1) @db.Decimal(5, 2) // per month
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model BillingRun {
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  period        String // YYYY-MM
+  mode          String // manual | automatic (mode at preparation time)
+  status        String      @default("draft") // draft | sending | sent | partially_failed
+  dueDate       DateTime
+  approvedById  String? // null when sent automatically
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  charges Charge[]
+
+  @@unique([condominiumId, period])
+}
+
+model Charge {
+  id              String      @id @default(cuid())
+  condominiumId   String
+  condominium     Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  unitId          String
+  unit            Unit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  runId           String?
+  run             BillingRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  payerUserId     String?
+  type            String // monthly | extra | reservation | fine | agreement
+  description     String
+  amountCents     Int
+  dueDate         DateTime
+  // draft | skipped | pending | confirmed | received | overdue | canceled | refunded | failed
+  status          String      @default("draft")
+  issue           String? // why a draft can't be sent (no payer, missing CPF...) or Asaas error
+  asaasPaymentId  String?     @unique
+  invoiceUrl      String?
+  bankSlipUrl     String?
+  paidAt          DateTime?
+  paidAmountCents Int?
+  feeCents        Int? // Asaas fee (value - netValue), paid by the administradora
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([runId, unitId])
+  @@index([condominiumId, status])
+  @@index([unitId])
+}
+
+model WebhookEvent {
+  id          String    @id // Asaas evt_... id
+  event       String
+  payload     Json
+  status      String    @default("received") // received | processed | error
+  error       String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+}
+
+model AuditLog {
+  id               String   @id @default(cuid())
+  administradoraId String?
+  actorUserId      String? // null = system (cron, webhook)
+  action           String
+  entity           String
+  entityId         String
+  data             Json?
+  createdAt        DateTime @default(now())
+
+  @@index([administradoraId, createdAt])
+  @@index([entity, entityId])
 }

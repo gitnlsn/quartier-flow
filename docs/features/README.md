@@ -22,8 +22,8 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 | # | Feature | Proposed phase | Depends on |
 |---|---|---|---|
 | [01](01-authentication-and-2fa.md) | Authentication (email link + Google) | MVP (foundation) — implemented v1 | — |
-| [02](02-condominium-units-and-residents.md) | Condominium, units & residents | MVP (foundation) | 01 |
-| [03](03-billing-and-payments.md) | Billing & payments (boleto / Pix via Asaas) | MVP (foundation) | 01, 02, 17 |
+| [02](02-condominium-units-and-residents.md) | Condominium, units & residents | MVP (foundation) — implemented slice 1 | 01 |
+| [03](03-billing-and-payments.md) | Billing & payments (boleto / Pix via Asaas) | MVP (foundation) — implemented slice 1 | 01, 02, 17 |
 | [04](04-delinquency-management.md) | Delinquency management | MVP | 03, 17 |
 | [05](05-financial-transparency.md) | Financial transparency & dashboard | MVP | 03, 17 |
 | [06](06-common-area-reservations.md) | Common area reservations (paid add-on) | MVP | 02, 04, 18 |
@@ -37,9 +37,9 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 | [14](14-service-providers-and-inventory.md) | Service providers & inventory | Post-MVP | 02 |
 | [15](15-manager-task-calendar.md) | Manager task calendar | Post-MVP | 02 |
 | [16](16-notifications.md) | Notifications (push, email, SMS) | MVP (cross-cutting) | 01 |
-| [17](17-asaas-payments-platform.md) | Asaas payments platform (all money flows) | MVP (foundation, cross-cutting) | 02 |
+| [17](17-asaas-payments-platform.md) | Asaas payments platform (all money flows) | MVP (foundation, cross-cutting) — implemented slice 1 (sandbox) | 02 |
 | [18](18-platform-billing.md) | Platform billing (seats + add-ons) | MVP | 02, 17, 19 |
-| [19](19-administradora-manager-area.md) | Administradora manager area | MVP (later) | 01, 02, 17, 18 |
+| [19](19-administradora-manager-area.md) | App area for all users + administradora management | MVP — implemented slice 1 | 01, 02, 17, 18 |
 
 ## Platform notes that apply to every feature
 

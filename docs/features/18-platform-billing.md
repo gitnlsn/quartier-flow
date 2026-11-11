@@ -1,6 +1,6 @@
 # 18 — Platform Billing (Quartier Flow's own revenue)
 
-**Status:** Proposed · **Phase:** MVP · **Depends on:** 02, 17, 19
+**Status:** Partially implemented (plan choice, Nov/2026) · **Phase:** MVP · **Depends on:** 02, 17, 19
 
 ## Summary
 Quartier Flow charges each **administradora** monthly, from our main Asaas account (17).
@@ -100,3 +100,7 @@ model PlatformInvoice {
 - Do we also take a fee on resident payments, or is seat + add-on pricing our only
   revenue? (Today: split sends 100% of net to the administradora, which pays the Asaas
   fees, see 17.)
+
+## Implementation (slice 1)
+- `Plan` catalog seeded by `scripts/seed-plans.ts` (**placeholder prices**), `AdministradoraPlan`; plan choice in onboarding and `/painel/plano` with seat count and monthly estimate.
+- Not yet: add-ons, monthly invoice to the administradora, overdue handling.

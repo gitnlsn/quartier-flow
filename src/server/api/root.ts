@@ -1,5 +1,10 @@
+import { administradoraRouter } from "~/server/api/routers/administradora";
+import { billingRouter } from "~/server/api/routers/billing";
+import { condominiumRouter } from "~/server/api/routers/condominium";
 import { helloRouter } from "~/server/api/routers/hello";
 import { newsletterRouter } from "~/server/api/routers/newsletter";
+import { portalRouter } from "~/server/api/routers/portal";
+import { signupRouter } from "~/server/api/routers/signup";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -10,6 +15,11 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
 	hello: helloRouter,
 	newsletter: newsletterRouter,
+	signup: signupRouter,
+	portal: portalRouter,
+	administradora: administradoraRouter,
+	condominium: condominiumRouter,
+	billing: billingRouter,
 });
 
 // export type definition of API

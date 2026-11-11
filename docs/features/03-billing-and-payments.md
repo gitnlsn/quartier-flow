@@ -1,6 +1,6 @@
 # 03 — Billing & Payments (boleto / Pix via Asaas)
 
-**Status:** Proposed · **Phase:** MVP (foundation) · **Depends on:** 01, 02, 17
+**Status:** Implemented (slice 1, Nov/2026) · **Phase:** MVP (foundation) · **Depends on:** 01, 02, 17
 
 ## Summary
 Issue the monthly condominium fee and extra charges, and let residents pay by boleto or
@@ -101,3 +101,11 @@ Asaas customers, payment accounts and webhook events: see 17.
 - Superlógica's resident app shows open/paid charges, second copies and barcode copy
   ([App Store](https://apps.apple.com/BR/app/id1160849001)).
 - Lello includes boletos in the resident app ([App Store](https://apps.apple.com/app/id1583983294)).
+
+## Implementation (slice 1)
+- `BillingConfig` per condominium (manual/automatic, default amount, due/generation day, fine/interest), `BillingRun` per month, `Charge` per unit.
+- Manual mode: run prepared → **audit screen** (ready vs. issues, totals) → confirm → sent to Asaas. Automatic mode: daily cron `/api/cron/billing` (`vercel.json`, `CRON_SECRET`) prepares and sends; every step is in `AuditLog`.
+- Sending requires the administradora's KYC to be approved; per-charge failures are recorded and can be retried.
+- Residents: **Minhas cobranças** with "Pagar com Pix ou boleto" (Asaas `invoiceUrl`).
+- Code: `src/server/billing/runs.ts`, `src/server/api/routers/billing.ts`.
+- Not yet: extra/reservation/fine charges, editing or canceling sent charges, receipts, manual cash payments.

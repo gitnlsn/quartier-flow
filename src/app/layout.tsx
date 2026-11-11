@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import type { Metadata } from "next";
-import { Saira } from "next/font/google";
+import { Geist, Saira } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { StructuredData } from "./_components/structured-data";
@@ -72,11 +72,14 @@ const saira = Saira({
 	variable: "--font-saira",
 });
 
+// App area body text (see --font-app in globals.css).
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+
 export default function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<html lang="pt-BR" className={`${saira.variable}`}>
+		<html lang="pt-BR" className={`${saira.variable} ${geist.variable}`}>
 			<head>
 				<StructuredData />
 			</head>

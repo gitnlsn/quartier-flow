@@ -43,7 +43,9 @@ export function ConfirmSignIn({ token }: { token: string }) {
 
 	return (
 		<div className="space-y-4">
-			<p className="text-white/70">Clique abaixo para concluir o acesso.</p>
+			<p className="text-muted-foreground">
+				Clique abaixo para concluir o acesso.
+			</p>
 			<button
 				type="button"
 				onClick={confirm}

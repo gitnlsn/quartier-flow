@@ -43,5 +43,8 @@ else
 	npx --no prisma db push
 fi
 
+echo -e "${GREEN}Seeding plans...${NC}"
+npm run --silent script scripts/seed-plans.ts
+
 echo -e "${GREEN}Starting Next.js...${NC}"
 npm run dev

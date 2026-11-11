@@ -23,7 +23,10 @@ export default async function EntrarPage({
 	return (
 		<AuthShell title="Entrar">
 			{erro === "google" && (
-				<p role="alert" className="mb-6 border-2 border-white p-3 text-sm">
+				<p
+					role="alert"
+					className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive text-sm"
+				>
 					Não foi possível entrar com essa conta Google. O acesso é só para
 					moradores e síndicos convidados: use o mesmo email do convite.
 				</p>

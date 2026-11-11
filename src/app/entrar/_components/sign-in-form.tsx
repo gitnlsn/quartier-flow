@@ -39,7 +39,7 @@ export function SignInForm() {
 					Se <strong>{email}</strong> estiver cadastrado, você vai receber um
 					link de acesso em instantes.
 				</p>
-				<p className="text-sm text-white/70">
+				<p className="text-muted-foreground text-sm">
 					O link expira em 15 minutos. Confira também a caixa de spam.
 				</p>
 				<button
@@ -64,10 +64,10 @@ export function SignInForm() {
 				{googlePending ? "Abrindo o Google..." : "Entrar com Google"}
 			</button>
 
-			<div className="flex items-center gap-3 text-sm text-white/70">
-				<span className="h-px flex-1 bg-white/40" />
+			<div className="flex items-center gap-3 text-muted-foreground text-sm">
+				<span className="h-px flex-1 bg-border" />
 				ou receba um link por email
-				<span className="h-px flex-1 bg-white/40" />
+				<span className="h-px flex-1 bg-border" />
 			</div>
 
 			<EmailLinkForm
@@ -102,7 +102,7 @@ function EmailLinkForm({
 					inputMode="email"
 					value={email}
 					onChange={(event) => onEmailChange(event.target.value)}
-					className="w-full border-2 border-white bg-black px-3 py-3 text-white outline-none focus:bg-white focus:text-black"
+					className="h-12 w-full rounded-md border border-input bg-background px-3 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
 					placeholder="voce@email.com"
 				/>
 			</label>
