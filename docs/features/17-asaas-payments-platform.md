@@ -37,23 +37,60 @@ Our customer is the **administradora**. There are two independent flows:
   apply to long-term subaccount API access. (We still receive `ACCOUNT_STATUS_*`
   events to track its KYC.)
 
-## ⚠️ Points to validate before building
-1. **Beneficiary on the boleto:** the issuer is Quartier Flow, so residents will see
-   *Quartier Flow* (not the condominium or administradora) as the beneficiary. Check
-   that this is acceptable to administradoras and residents, and what Asaas shows.
-2. **Tax and legal (accountant/lawyer):** condominium money passes through our account
-   before the split. Confirm how it's treated (is it our revenue? invoices?) and that
-   the contracts make clear the funds belong to the condominium.
-3. **Per-condominium segregation:** with one wallet per administradora, funds from all
+## Validated decisions (Nov/2026)
+1. ✅ **Beneficiary on the boleto:** residents see *Quartier Flow* as the beneficiary
+   (the issuer). Checked and accepted.
+2. ✅ **Tax and legal:** the pass-through model (charges issued by us, net split to the
+   administradora) was confirmed.
+3. ✅ **Who pays Asaas fees:** the **administradora**. The split sends 100% of the
+   **net value** (gross minus Asaas fees: boleto, Pix, notifications). **Residents
+   never pay any payment fee**: they pay the charge value, plus only fine/interest or
+   minus discount. We record the fee per payment (`value` − `netValue`) so the
+   administradora sees fees per charge and per condominium (for its balancete, 05).
+   Written into `/termos` section **8.4**; final text to be reviewed by a lawyer
+   before launch.
+4. ✅ **Asaas evaluation period:** accepted as a one-time, launch-phase constraint (see
+   below).
+
+## Asaas evaluation period (regulatory homologation)
+Not a scaling limit and not sandbox-only. It is a **one-time trial period in
+production** that ends when Asaas approves our operation ("homologação regulatória").
+
+| Limit | Rule |
+|---|---|
+| Subaccounts | Up to **10** per parent account (= 10 administradoras for us) |
+| Charges | Up to **R$ 2.000 per subaccount**, counting charges/subscriptions created by that subaccount |
+| Duration | Up to **60 days** from the first subaccount created in production |
+
+- Starts automatically with the first **production** subaccount.
+- When a limit is hit: no new subaccounts, and **splits / Pix / internal transfers to a
+  blocked subaccount are refused**. Charges issued before still can be paid; balances
+  are never frozen and can be withdrawn.
+- Homologation **can be requested at any time**, without waiting for a limit. After
+  approval the limits no longer apply.
+- Sandbox has the same period enabled by default; **disable it in the sandbox account
+  settings** for development. Sandbox subaccounts are not replicated to production.
+
+**Impact on our model:** charges are issued by our main account, so the R$ 2.000 limit
+likely doesn't apply to administradoras (they don't issue charges); **confirm with
+Asaas**. The real risk is the **60-day clock**: if it expires before approval, splits to
+administradoras are blocked and residents' payments stay in our account.
+
+**Launch plan:**
+1. Develop in sandbox with the evaluation period disabled.
+2. **Request homologation before or right after creating the first production
+   subaccount.**
+3. Pilot with up to 10 administradoras while homologation runs.
+
+Source: [FAQ do Período de Avaliação](https://docs.asaas.com/docs/faq-periodo-de-avaliacao)
+
+## ⚠️ Still to decide
+1. **Per-condominium segregation:** with one wallet per administradora, funds from all
    its condominiums arrive in the same account. Condominiums legally own their money;
    many administradoras keep one account per condominium. Options: our ledger
    attributes every split to a condominium (minimum), or one Asaas subaccount per
    condominium owned by the administradora (stronger). Decide with administradoras.
-4. **Asaas evaluation period:** starts with the first production subaccount: max **10
-   subaccounts**, **R$ 2.000** in charges per subaccount, **60 days**. Hitting a limit
-   blocks new subaccounts and charges until Asaas finishes evaluating. Plan the pilot
-   around it and ask Asaas how it applies when charges are issued by the main account.
-5. **Branding:** customer touchpoints must show Asaas branding and responsibility text,
+2. **Branding:** customer touchpoints must show Asaas branding and responsibility text,
    per the Playbook Asaas provides.
 
 ## Administradora KYC (receiving account)
@@ -179,11 +216,9 @@ model WebhookEvent {              // idempotency + audit
 ```
 
 ## Open questions
-1. Points 1–4 in "Points to validate".
-2. **Asaas fees** on resident charges (boleto, Pix, notifications): deducted from the
-   administradora's split (default with 100% of net) or absorbed by us?
-3. **Notifications:** Asaas-sent or ours?
-4. **Payment methods:** boleto + Pix only, or credit card too?
+1. Per-condominium segregation and branding ("Still to decide").
+2. **Notifications:** Asaas-sent (fee paid by the administradora) or ours?
+3. **Payment methods:** boleto + Pix only, or credit card too?
 
 ## References
 docs.asaas.com: autenticação, criação de subcontas, onboarding e envio de documentos,

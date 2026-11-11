@@ -46,7 +46,9 @@ export default function TermosPage() {
 								<li className="text-base md:text-lg">
 									Gestão financeira e emissão de boletos
 								</li>
-								<li className="text-base md:text-lg">Comunicação centralizada</li>
+								<li className="text-base md:text-lg">
+									Comunicação centralizada
+								</li>
 								<li className="text-base md:text-lg">
 									Sistema de reservas de áreas comuns
 								</li>
@@ -138,9 +140,8 @@ export default function TermosPage() {
 								>
 									Política de Privacidade
 								</a>
-								. Ao usar a
-								Plataforma, você concorda com a coleta, uso e compartilhamento
-								de informações conforme descrito na política.
+								. Ao usar a Plataforma, você concorda com a coleta, uso e
+								compartilhamento de informações conforme descrito na política.
 							</p>
 
 							<h2 className="mt-16 mb-6 border-gray-800 border-b-2 pb-4 font-bold text-3xl tracking-tight md:text-5xl">
@@ -170,6 +171,42 @@ export default function TermosPage() {
 								Você pode cancelar sua assinatura a qualquer momento. O
 								cancelamento entrará em vigor ao final do período de faturamento
 								atual.
+							</p>
+
+							<h3 className="mt-10 mb-5 font-bold text-2xl tracking-tight md:text-3xl">
+								8.4. Cobranças aos Moradores e Tarifas do Meio de Pagamento
+							</h3>
+							<p className="mb-6 text-base leading-relaxed md:text-lg">
+								As cobranças aos moradores (taxas condominiais, taxas extras,
+								reservas de áreas comuns, multas e acordos) são emitidas pelo
+								Quartier Flow por meio do Asaas, instituição de pagamento
+								parceira. Por isso, o Quartier Flow aparece como beneficiário
+								nos boletos e nas cobranças via Pix.
+							</p>
+							<p className="mb-6 text-base leading-relaxed md:text-lg">
+								Os valores recebidos pertencem aos condomínios e são repassados
+								automaticamente, por divisão de pagamento (split), para a conta
+								Asaas da administradora responsável. O Quartier Flow atua apenas
+								como intermediário e não utiliza esses valores.
+							</p>
+							<p className="mb-6 text-base leading-relaxed md:text-lg">
+								As tarifas cobradas pelo meio de pagamento (como emissão e
+								liquidação de boletos, Pix e envio de notificações de cobrança)
+								são de responsabilidade da administradora e são descontadas do
+								valor repassado. A administradora recebe o valor líquido de cada
+								pagamento e tem acesso ao detalhamento das tarifas por cobrança
+								e por condomínio.
+							</p>
+							<p className="mb-6 text-base leading-relaxed md:text-lg">
+								Os moradores não pagam nenhuma tarifa adicional pelo uso do meio
+								de pagamento: o valor pago é o valor da cobrança, acrescido
+								apenas de multa e juros por atraso, ou reduzido por descontos,
+								conforme definidos pelo condomínio.
+							</p>
+							<p className="mb-6 text-base leading-relaxed md:text-lg">
+								Para receber os repasses, a administradora deve ter sua conta
+								Asaas aprovada no processo de verificação cadastral (KYC) e
+								concorda também com os termos de uso do Asaas.
 							</p>
 
 							<h2 className="mt-16 mb-6 border-gray-800 border-b-2 pb-4 font-bold text-3xl tracking-tight md:text-5xl">

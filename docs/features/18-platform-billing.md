@@ -98,4 +98,5 @@ model PlatformInvoice {
 - Prices, seat rule and add-on scope (requirements 1–3, 6).
 - Free trial? (Asaas evaluation-period limits in 17.)
 - Do we also take a fee on resident payments, or is seat + add-on pricing our only
-  revenue? (Today: split sends 100% of net to the administradora.)
+  revenue? (Today: split sends 100% of net to the administradora, which pays the Asaas
+  fees, see 17.)

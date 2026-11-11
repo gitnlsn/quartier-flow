@@ -47,8 +47,11 @@ handles payment processing, boleto registration, Pix and settlement.
 10. **Receipts** from the Asaas payment.
 11. **Split:** every charge carries `split: [{ walletId: <administradora>,
     percentualValue: 100 }]`; our ledger also records which condominium each charge
-    belongs to, so the administradora can account per condominium (17, point 3).
+    belongs to, so the administradora can account per condominium (17, "Still to decide").
     Our own revenue is billed separately (18).
+12. **Fees:** Asaas fees are paid by the administradora (deducted from the net split);
+    residents never pay a payment fee. Store `value`, `netValue` and the fee on each
+    paid charge (`Charge.feeCents`) for reporting (17, `/termos` 8.4).
 
 ## Status lifecycle
 `draft` → `pending` (created on Asaas) → `confirmed` (paid, funds not yet available)
@@ -71,6 +74,7 @@ model Charge {
   bankSlipUrl     String?
   paidAt          DateTime?
   paidAmountCents Int?      // includes fine/interest when paid late
+  feeCents        Int?      // Asaas fee (value - netValue), paid by the administradora
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   @@index([condominiumId, status])
@@ -83,15 +87,13 @@ Asaas customers, payment accounts and webhook events: see 17.
 - Money as integer cents in our DB; Asaas uses decimals: convert at the boundary only.
 - Charge creation must be idempotent: on timeout, look up by `externalReference`
   before retrying.
-- Asaas evaluation period limits a pilot (17); confirm how they apply to charges issued
-  by the main account.
-- Residents see **Quartier Flow** as the boleto beneficiary (17, point 1).
+- Asaas evaluation period (one-time, until homologation): request homologation as soon
+  as the first production subaccount exists (17).
+- Residents see **Quartier Flow** as the boleto beneficiary (validated, 17).
 - Asaas branding must appear where residents pay (17).
 - Android: Pix copia-e-cola uses the Clipboard plugin; `invoiceUrl` opens in the browser.
 
 ## Open questions
-- Who absorbs Asaas fees per boleto/Pix: deducted from the administradora's split
-  (default) or absorbed by Quartier Flow?
 - Credit card too, or boleto + Pix only?
 - Do we let Asaas send charge notifications, or send our own (see 17)?
 
