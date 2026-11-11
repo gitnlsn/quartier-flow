@@ -12,6 +12,10 @@ export const env = createEnv({
 				? z.string()
 				: z.string().optional(),
 
+		// Public origin of the app, used in sign-in links (e.g. http://localhost:3000).
+		BETTER_AUTH_URL: z.string().url(),
+
+		// Google sign-in. Redirect URI: <BETTER_AUTH_URL>/api/auth/callback/google
 		AUTH_GOOGLE_ID: z.string(),
 		AUTH_GOOGLE_SECRET: z.string(),
 
@@ -37,6 +41,7 @@ export const env = createEnv({
 	runtimeEnv: {
 		AUTH_SECRET: process.env.AUTH_SECRET,
 
+		BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
 		AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
 		AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
 
