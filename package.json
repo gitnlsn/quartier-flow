@@ -8,6 +8,7 @@
 		"db:push": "prisma db push",
 		"db:studio": "prisma studio",
 		"dev": "next dev --turbo",
+		"dev:local": "bash scripts/dev.sh",
 		"postinstall": "prisma generate",
 		"preview": "next build && next start",
 		"script": "dotenv -e .env -- tsx --",

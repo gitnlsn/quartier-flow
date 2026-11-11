@@ -1,9 +1,9 @@
 services:
-  # Development database with pgvector support
   postgres:
-    image: pgvector/pgvector:pg16
+    image: postgres:16-alpine
+    container_name: quartier-flow-postgres
     environment:
-      POSTGRES_USER: user
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: quartier-flow
     ports:
@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d quartier-flow"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quartier-flow"]
       interval: 5s
       timeout: 5s
       retries: 5
