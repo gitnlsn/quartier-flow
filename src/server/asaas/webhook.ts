@@ -54,7 +54,10 @@ async function handlePayment(event: AsaasEvent) {
 			],
 		},
 	});
-	if (!charge) return; // not ours (e.g. platform invoices later, or other systems)
+	if (!charge) {
+		await handlePlatformInvoicePayment(payment, status);
+		return;
+	}
 
 	if (status && FINAL_PAID.has(charge.status) && status !== "refunded") {
 		status = undefined;
@@ -84,6 +87,65 @@ async function handlePayment(event: AsaasEvent) {
 				: {}),
 		},
 	});
+}
+
+/** Charge status -> PlatformInvoice status (docs/features/18). */
+const INVOICE_STATUS: Record<string, string> = {
+	pending: "pending",
+	confirmed: "paid",
+	received: "paid",
+	overdue: "overdue",
+	canceled: "canceled",
+	refunded: "canceled",
+};
+
+/** Our Quartier Flow invoice to an administradora, if the payment is one. */
+async function handlePlatformInvoicePayment(
+	payment: NonNullable<AsaasEvent["payment"]>,
+	chargeStatus: string | undefined,
+) {
+	const invoice = await db.platformInvoice.findFirst({
+		where: {
+			OR: [
+				{ asaasPaymentId: payment.id },
+				...(payment.externalReference
+					? [{ id: payment.externalReference }]
+					: []),
+			],
+		},
+	});
+	if (!invoice) return; // not ours (other systems on the same account)
+
+	let status = chargeStatus ? INVOICE_STATUS[chargeStatus] : undefined;
+	// A paid invoice only moves back on a refund or cancellation.
+	if (invoice.status === "paid" && status !== "canceled") status = undefined;
+	await db.platformInvoice.update({
+		where: { id: invoice.id },
+		data: {
+			asaasPaymentId: payment.id,
+			invoiceUrl: payment.invoiceUrl ?? invoice.invoiceUrl,
+			...(payment.dueDate
+				? { dueDate: new Date(`${payment.dueDate}T12:00:00Z`) }
+				: {}),
+			...(status ? { status } : {}),
+			...(status === "paid"
+				? {
+						paidAt: new Date(
+							payment.clientPaymentDate ?? payment.paymentDate ?? Date.now(),
+						),
+					}
+				: {}),
+		},
+	});
+	if (status && status !== invoice.status) {
+		await audit({
+			administradoraId: invoice.administradoraId,
+			actorUserId: null,
+			action: `platform_invoice.${status}`,
+			entity: "platform_invoice",
+			entityId: invoice.id,
+		});
+	}
 }
 
 async function handleAccountStatus(event: AsaasEvent) {

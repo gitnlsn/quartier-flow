@@ -5,10 +5,12 @@ import { ArrowRight, Building2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { AdminOverview } from "./_components/admin-overview";
 import { MyCharges } from "./_components/my-charges";
+import { TermsUpdateCard } from "./_components/terms-update";
 import { Card, Loading, PageTitle } from "./_components/ui";
 import {
 	BecomeAdminCard,
 	FinishSignupCard,
+	OpenInvoicesCard,
 	Welcome,
 } from "./_components/welcome";
 
@@ -27,9 +29,26 @@ export default function PainelHome() {
 		email,
 		hasRole,
 		adminNeedsPlan,
+		openInvoices,
+		closedAdministradora,
+		termsOutdated,
 	} = access.data;
+	const invoices = openInvoices.count > 0 && (
+		<OpenInvoicesCard {...openInvoices} />
+	);
 
-	if (!hasRole) return <Welcome firstName={firstName} email={email} />;
+	if (!hasRole) {
+		return (
+			<div className="space-y-6">
+				{invoices}
+				<Welcome
+					firstName={firstName}
+					email={email}
+					closedAdministradora={closedAdministradora?.name}
+				/>
+			</div>
+		);
+	}
 	if (adminNeedsPlan) {
 		return (
 			<div className="space-y-6">
@@ -41,6 +60,8 @@ export default function PainelHome() {
 
 	return (
 		<div className="space-y-8">
+			{invoices}
+			{termsOutdated && <TermsUpdateCard />}
 			{isAdmin ? (
 				<AdminOverview />
 			) : (
@@ -80,7 +101,9 @@ export default function PainelHome() {
 				</Card>
 			)}
 
-			{!isAdmin && <BecomeAdminCard />}
+			{!isAdmin && (
+				<BecomeAdminCard closedAdministradora={closedAdministradora?.name} />
+			)}
 		</div>
 	);
 }

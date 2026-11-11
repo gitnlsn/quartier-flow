@@ -26,12 +26,15 @@ export type CreatePaymentInput = {
 	amountCents: number;
 	dueDate: string; // YYYY-MM-DD
 	description: string;
-	/** Our Charge.id: makes creation idempotent. */
+	/** Our Charge.id or PlatformInvoice.id: makes creation idempotent. */
 	externalReference: string;
-	finePercent: number;
-	interestPercent: number;
-	/** Administradora wallet: receives 100% of the net value (docs/features/17). */
-	splitWalletId: string;
+	finePercent?: number;
+	interestPercent?: number;
+	/**
+	 * Administradora wallet: receives 100% of the net value (docs/features/17).
+	 * Omitted for platform invoices, which stay in our main account.
+	 */
+	splitWalletId?: string;
 };
 
 async function findByExternalReference(externalReference: string) {
@@ -43,8 +46,8 @@ async function findByExternalReference(externalReference: string) {
 }
 
 /**
- * Creates a boleto (with Pix QR when the account has a Pix key) split to the
- * administradora. Safe to retry: an existing payment with the same
+ * Creates a boleto (with Pix QR when the account has a Pix key), split to the
+ * administradora when `splitWalletId` is given. Safe to retry: an existing payment with the same
  * externalReference is returned instead of creating a duplicate.
  */
 export async function createPayment(
@@ -62,9 +65,15 @@ export async function createPayment(
 				dueDate: input.dueDate,
 				description: input.description,
 				externalReference: input.externalReference,
-				fine: { value: input.finePercent },
-				interest: { value: input.interestPercent },
-				split: [{ walletId: input.splitWalletId, percentualValue: 100 }],
+				...(input.finePercent !== undefined && {
+					fine: { value: input.finePercent },
+				}),
+				...(input.interestPercent !== undefined && {
+					interest: { value: input.interestPercent },
+				}),
+				...(input.splitWalletId && {
+					split: [{ walletId: input.splitWalletId, percentualValue: 100 }],
+				}),
 			},
 		});
 	} catch (error) {

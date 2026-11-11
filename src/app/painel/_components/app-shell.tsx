@@ -7,6 +7,7 @@ import {
 	ChevronsUpDown,
 	ClipboardCheck,
 	CreditCard,
+	FileText,
 	Home,
 	Landmark,
 	LayoutDashboard,
@@ -59,6 +60,7 @@ type CondoOption = { id: string; name: string };
 function buildGroups(
 	isAdmin: boolean,
 	adminNeedsPlan: boolean,
+	hasPlatformBilling: boolean,
 	condoId: string | null,
 ): NavGroup[] {
 	const groups: NavGroup[] = [];
@@ -115,6 +117,16 @@ function buildGroups(
 				label: "Minhas cobranças",
 				icon: <Receipt />,
 			},
+			// Kept after the administradora is closed: last invoices stay payable.
+			...(hasPlatformBilling
+				? [
+						{
+							href: "/painel/faturas",
+							label: "Faturas do Quartier Flow",
+							icon: <FileText />,
+						},
+					]
+				: []),
 		],
 	});
 	if (isAdmin && adminNeedsPlan) {
@@ -331,6 +343,7 @@ export function AppShell({
 	contextName,
 	isAdmin,
 	adminNeedsPlan,
+	hasPlatformBilling,
 	isSindico,
 	condos,
 	lastCondoId,
@@ -341,7 +354,10 @@ export function AppShell({
 	contextName: string | null;
 	isAdmin: boolean;
 	adminNeedsPlan: boolean;
+	/** Admin(ned) an administradora that signed a plan (docs/features/18). */
+	hasPlatformBilling: boolean;
 	isSindico: boolean;
+	/** Condominiums the user can open (managed, síndico, or closed archive). */
 	condos: CondoOption[];
 	lastCondoId: string | null;
 }) {
@@ -354,11 +370,12 @@ export function AppShell({
 		id && condos.some((c) => c.id === id) ? id : null;
 	const activeCondoId =
 		known(fromUrl) ?? known(lastCondoId) ?? condos[0]?.id ?? null;
-	const hasCondos = (isAdmin || isSindico) && condos.length > 0;
+	const hasCondos = condos.length > 0;
 
 	const groups = buildGroups(
 		isAdmin,
 		adminNeedsPlan,
+		hasPlatformBilling,
 		hasCondos ? activeCondoId : null,
 	);
 	const switcher = hasCondos ? (

@@ -7,13 +7,23 @@
  * that was actually accepted. Sections 8.1–8.4 must be reviewed by a lawyer
  * before launch.
  */
-export const TERMS_VERSION = "2026-11-11";
+export const TERMS_VERSION = "2026-11-11.2";
 
-/** "11/11/2026" */
-export const termsVersionLabel = () =>
-	new Date(`${TERMS_VERSION}T12:00:00Z`).toLocaleDateString("pt-BR", {
+/** "11/11/2026", or "11/11/2026 (revisão 2)" for a same-day revision. */
+export const termsVersionLabel = (version = TERMS_VERSION) => {
+	const [date = version, revision] = version.split(".");
+	const label = new Date(`${date}T12:00:00Z`).toLocaleDateString("pt-BR", {
 		timeZone: "UTC",
 	});
+	return revision ? `${label} (revisão ${revision})` : label;
+};
+
+/** What changed in the current version, shown when asking to accept it again. */
+export const TERMS_CHANGES = [
+	"8.2: faturas abaixo de R$ 5,00 não são cobradas.",
+	"8.3: a administradora pode ser encerrada pela própria plataforma, na página Plano. Vale na hora, o mês é cobrado pelos dias usados e as faturas continuam disponíveis para pagamento.",
+	"8.3: depois do encerramento, os condomínios ficam só para consulta e a administradora pode ser reaberta.",
+];
 
 export type Inline = string | { text: string; href: string };
 export type Block = { p: Inline[] } | { ul: Inline[][] };
@@ -138,6 +148,9 @@ export const TERMS: TermsSection[] = [
 					p(
 						"A fatura é enviada por e-mail para a administradora, com boleto e Pix, e vence no dia 10. Mudanças de plano valem a partir da fatura seguinte.",
 					),
+					p(
+						"Faturas abaixo do valor mínimo de cobrança (R$ 5,00) não são cobradas: ficam registradas como dispensadas, sem valor a pagar.",
+					),
 				],
 			},
 			{
@@ -147,7 +160,13 @@ export const TERMS: TermsSection[] = [
 						"Em caso de atraso no pagamento da fatura, o acesso da administradora às funções de gestão pode ser restrito até a regularização. Os moradores continuam podendo consultar e pagar as próprias cobranças.",
 					),
 					p(
-						"A administradora pode cancelar a assinatura a qualquer momento, pelos canais de contato da seção 14. O cancelamento vale ao final do mês corrente, e a fatura desse mês é emitida normalmente.",
+						"A administradora pode encerrar a conta a qualquer momento, pela própria plataforma, na página Plano. O encerramento vale na hora: as funções de gestão são encerradas, a cobrança automática dos condomínios é desligada e não são emitidas faturas para os meses seguintes.",
+					),
+					p(
+						"O mês do encerramento é cobrado proporcionalmente aos dias usados, considerando os moradores e síndicos ativos na data do encerramento, na fatura emitida no dia 1º do mês seguinte. Faturas emitidas antes ou depois do encerramento continuam devidas e disponíveis para pagamento na plataforma.",
+					),
+					p(
+						"Após o encerramento, os condomínios ficam disponíveis apenas para consulta, para preservar o histórico financeiro de moradores e síndicos. As cobranças já enviadas aos moradores continuam válidas e seus pagamentos seguem para a conta de recebimento da administradora. A administradora pode ser reaberta com a assinatura de um novo plano e o aceite da versão vigente destes Termos.",
 					),
 				],
 			},

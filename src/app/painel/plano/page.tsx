@@ -37,6 +37,17 @@ export default function PlanoPage() {
 				</dl>
 			</Card>
 			<PlanPicker currentPlanId={plan?.id} />
+			<Card
+				title="Encerrar administradora"
+				description="Encerra a gestão e as faturas futuras. As faturas emitidas continuam disponíveis para pagamento e os condomínios ficam só para consulta."
+			>
+				<a
+					href="/painel/plano/encerrar"
+					className="inline-flex h-11 items-center rounded-md bg-destructive/10 px-5 font-medium text-destructive hover:bg-destructive/20"
+				>
+					Encerrar administradora
+				</a>
+			</Card>
 		</div>
 	);
 }

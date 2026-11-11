@@ -4,7 +4,11 @@ import { z } from "zod";
 import { env } from "~/env";
 import { onlyDigits } from "~/lib/br";
 import { assertActivePlan } from "~/server/access";
-import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import {
+	adminProcedure,
+	createTRPCRouter,
+	protectedProcedure,
+} from "~/server/api/trpc";
 import {
 	type PendingDocuments,
 	approveSandboxSubaccount,
@@ -20,29 +24,15 @@ import {
 } from "~/server/asaas/accounts";
 import { AsaasError } from "~/server/asaas/client";
 import { audit } from "~/server/audit";
+import { deliver, sendEmail } from "~/server/auth/messaging";
 import { decryptSecret, encryptSecret } from "~/server/crypto";
-import type { db as Db } from "~/server/db";
-
-/** Distinct active residents and síndicos across the administradora (docs/features/18). */
-export async function countSeats(db: typeof Db, administradoraId: string) {
-	const active = {
-		endedAt: null,
-		condominium: { administradoraId },
-	};
-	const [residents, sindicos] = await Promise.all([
-		db.membership.findMany({
-			where: { ...active, role: "resident" },
-			distinct: ["userId"],
-			select: { userId: true },
-		}),
-		db.membership.findMany({
-			where: { ...active, role: "sindico" },
-			distinct: ["userId"],
-			select: { userId: true },
-		}),
-	]);
-	return { residents: residents.length, sindicos: sindicos.length };
-}
+import {
+	MINIMUM_INVOICE_CENTS,
+	computeInvoice,
+	localDay,
+	periodKey,
+} from "~/server/platform-billing";
+import { countSeats } from "~/server/seats";
 
 const companySchema = z.object({
 	companyType: z.enum(["LIMITED", "ASSOCIATION", "MEI", "INDIVIDUAL"], {
@@ -133,7 +123,8 @@ export const administradoraRouter = createTRPCRouter({
 			return { ok: true };
 		}),
 
-	plans: adminProcedure.query(({ ctx }) =>
+	/** Plan catalog (public prices): any signed-in user, e.g. reopening. */
+	plans: protectedProcedure.query(({ ctx }) =>
 		ctx.db.plan.findMany({
 			where: { active: true },
 			orderBy: { residentSeatCents: "asc" },
@@ -249,12 +240,26 @@ export const administradoraRouter = createTRPCRouter({
 			where: { administradoraId: ctx.administradoraId },
 		});
 		if (!payout) throw new TRPCError({ code: "NOT_FOUND" });
+		const accountEmail = (
+			await ctx.db.administradora.findUniqueOrThrow({
+				where: { id: ctx.administradoraId },
+				select: { email: true },
+			})
+		).email;
 		if (!payout.apiKeyEncrypted) {
-			throw new TRPCError({
-				code: "BAD_REQUEST",
-				message:
-					"A situação desta conta é atualizada automaticamente pelo Asaas (notificações). Conclua a verificação pelo email de ativação do Asaas.",
-			});
+			// Account linked without its own key (it already existed in Asaas):
+			// we can't query it, its status arrives by webhook. Not an error.
+			return {
+				viaWebhooksOnly: true as const,
+				kycStatus: payout.kycStatus,
+				onboardingUrl: payout.onboardingUrl,
+				detail: null,
+				pendingDocuments: [],
+				rejectReasons: null,
+				asaasLoginUrl: asaasLoginUrl(),
+				sandbox: isAsaasSandbox(),
+				accountEmail,
+			};
 		}
 		const apiKey = decryptSecret(payout.apiKeyEncrypted);
 		try {
@@ -292,6 +297,7 @@ export const administradoraRouter = createTRPCRouter({
 				data: { kycStatus: toKycStatus(status.general), onboardingUrl },
 			});
 			return {
+				viaWebhooksOnly: false as const,
 				kycStatus: updated.kycStatus,
 				onboardingUrl: updated.onboardingUrl,
 				detail: status,
@@ -308,12 +314,7 @@ export const administradoraRouter = createTRPCRouter({
 				rejectReasons: documents.rejectReasons ?? null,
 				asaasLoginUrl: asaasLoginUrl(),
 				sandbox: isAsaasSandbox(),
-				accountEmail: (
-					await ctx.db.administradora.findUniqueOrThrow({
-						where: { id: ctx.administradoraId },
-						select: { email: true },
-					})
-				).email,
+				accountEmail,
 			};
 		} catch (error) {
 			if (error instanceof AsaasError) {
@@ -367,4 +368,147 @@ export const administradoraRouter = createTRPCRouter({
 		});
 		return { ok: true };
 	}),
+	/** What closing would do now (docs/features/19): shown before confirming. */
+	closePreview: adminProcedure.query(async ({ ctx }) => {
+		const now = new Date();
+		const [administradora, condominiums, openCharges, payout, estimate] =
+			await Promise.all([
+				ctx.db.administradora.findUniqueOrThrow({
+					where: { id: ctx.administradoraId },
+					select: { name: true, cnpj: true },
+				}),
+				ctx.db.condominium.count({
+					where: { administradoraId: ctx.administradoraId },
+				}),
+				ctx.db.charge.aggregate({
+					where: {
+						condominium: { administradoraId: ctx.administradoraId },
+						status: { in: ["pending", "overdue"] },
+					},
+					_count: true,
+					_sum: { amountCents: true },
+				}),
+				ctx.db.payoutAccount.findUnique({
+					where: { administradoraId: ctx.administradoraId },
+					select: { id: true },
+				}),
+				computeInvoice(
+					ctx.db,
+					ctx.administradoraId,
+					periodKey(localDay(now).year, localDay(now).month),
+					now,
+				),
+			]);
+		return {
+			name: administradora.name,
+			condominiums,
+			openCharges: {
+				count: openCharges._count,
+				totalCents: openCharges._sum.amountCents ?? 0,
+			},
+			hasPayoutAccount: Boolean(payout),
+			finalInvoice: estimate
+				? {
+						totalCents: estimate.totalCents,
+						billedDays: estimate.billedDays,
+						daysInMonth: estimate.daysInMonth,
+						residentSeats: estimate.residentSeats,
+						sindicoSeats: estimate.sindicoSeats,
+						waived: estimate.totalCents < MINIMUM_INVOICE_CENTS,
+						dueDate: estimate.dueDate,
+					}
+				: null,
+		};
+	}),
+
+	/**
+	 * Closes the administradora (docs/features/19): management stops now, the
+	 * plan ends (the month is billed up to today on the 1st), automatic
+	 * billing is turned off and unsent drafts are discarded. Charges already
+	 * sent stay valid in Asaas. Condominiums remain as a read-only archive.
+	 */
+	close: adminProcedure
+		.input(z.object({ confirmName: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			const administradora = await ctx.db.administradora.findUniqueOrThrow({
+				where: { id: ctx.administradoraId },
+				select: { id: true, name: true, email: true },
+			});
+			const typed = input.confirmName.trim().toLocaleLowerCase("pt-BR");
+			if (typed !== administradora.name.trim().toLocaleLowerCase("pt-BR")) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Digite o nome da administradora exatamente como aparece.",
+				});
+			}
+
+			const now = new Date();
+			const draftRuns = {
+				condominium: { administradoraId: administradora.id },
+				status: "draft",
+			};
+			await ctx.db.$transaction([
+				ctx.db.administradora.update({
+					where: { id: administradora.id },
+					data: {
+						status: "closed",
+						closedAt: now,
+						closedById: ctx.session.user.id,
+					},
+				}),
+				ctx.db.administradoraPlan.updateMany({
+					where: { administradoraId: administradora.id, endedAt: null },
+					data: { endedAt: now },
+				}),
+				ctx.db.billingConfig.updateMany({
+					where: { condominium: { administradoraId: administradora.id } },
+					data: { enabled: false },
+				}),
+				ctx.db.charge.deleteMany({
+					where: {
+						run: draftRuns,
+						status: { in: ["draft", "skipped"] },
+					},
+				}),
+				ctx.db.billingRun.deleteMany({ where: draftRuns }),
+			]);
+			await audit({
+				administradoraId: administradora.id,
+				actorUserId: ctx.session.user.id,
+				action: "administradora.close",
+				entity: "administradora",
+				entityId: administradora.id,
+			});
+
+			const day = localDay(now);
+			const nextFirst = new Date(
+				Date.UTC(
+					day.month === 12 ? day.year + 1 : day.year,
+					day.month % 12,
+					1,
+					12,
+				),
+			).toLocaleDateString("pt-BR", { timeZone: "UTC" });
+			deliver(
+				sendEmail({
+					to: administradora.email,
+					subject: `Administradora encerrada: ${administradora.name}`,
+					text: [
+						`A administradora ${administradora.name} foi encerrada no Quartier Flow em ${now.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}.`,
+						"",
+						"O que acontece agora:",
+						"- A gestão foi encerrada: não é mais possível criar cobranças, convidar pessoas ou alterar os condomínios.",
+						`- A última fatura do Quartier Flow, proporcional aos dias usados neste mês, sai em ${nextFirst}. Depois dela, não há novas faturas.`,
+						"- As faturas emitidas continuam disponíveis para pagamento em Faturas do Quartier Flow.",
+						"- As cobranças já enviadas aos moradores continuam valendo e os pagamentos seguem para a conta Asaas da administradora.",
+						"- Os condomínios ficam disponíveis só para consulta, para moradores, síndicos e para você.",
+						"- A conta Asaas continua sendo da administradora: saldos são sacados direto no Asaas.",
+						"- Para voltar a gerenciar, reabra a administradora em Início, assinando um plano e os Termos de Uso novamente.",
+						"",
+						`Faturas: ${new URL("/painel/faturas", env.BETTER_AUTH_URL).toString()}`,
+					].join("\n"),
+				}),
+			);
+			return { ok: true };
+		}),
 });

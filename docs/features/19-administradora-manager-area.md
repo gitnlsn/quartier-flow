@@ -56,4 +56,19 @@ its payment-account KYC, and see its Quartier Flow bill.
 - Until a plan is signed: Plano and Conta de recebimento redirect to `/painel/comecar`; creating condominiums, inviting and importing people are refused (`assertActivePlan`); the sidebar shows only "Concluir cadastro".
 - After signing: `/painel/onboarding` (company data → Asaas account/KYC); plan shown read-only there.
 - Light shadcn/ui theme scoped to the app area (see CLAUDE.md "App area design system").
-- Not yet: multiple admin users per administradora, email change with session revocation, audit log screen.
+- **Closing (Nov/2026):** Plano → "Encerrar administradora" (`/painel/plano/encerrar`) explains the
+  consequences (final prorated invoice estimate, open resident charges that stay valid, read-only
+  condominiums, Asaas account stays the company's, reopening) and asks for the company name.
+  `administradora.close` sets `status=closed`/`closedAt`, ends the plan, turns off automatic billing,
+  discards unsent draft runs, audits and emails. Closed administradoras:
+  - are ignored by `getAccess`/`adminProcedure` (no management; the user falls back to the resident /
+    síndico view or the welcome page), but `closedAdministradoraIds` keeps their condominiums
+    viewable read-only (`viewableCondominiums`, `assertCanViewCondominium` with `canManage=false`);
+  - are skipped by the resident billing job; Asaas webhooks still settle open resident charges;
+  - keep "Faturas do Quartier Flow" (18).
+- **Reopening:** `/painel/comecar` targets the closed administradora (prefilled), and signing a plan
+  with the current Terms reactivates it.
+- **Terms updates:** when `TERMS_VERSION` changes, admins whose last `TermsAcceptance` is older see a
+  card on Início with `TERMS_CHANGES` and accept the new version (`onboarding.acceptTerms`).
+- Not yet: multiple admin users per administradora, leaving an administradora without closing it,
+  email change with session revocation, audit log screen.

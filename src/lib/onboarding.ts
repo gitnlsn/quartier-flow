@@ -48,7 +48,8 @@ export const BILLING_RULES = [
 	"A fatura sai no dia 1º de cada mês, referente ao mês anterior, com os assentos ativos no último dia desse mês. A primeira é proporcional aos dias desde a assinatura.",
 	`Você recebe a fatura por email, com boleto e Pix, com vencimento no dia ${INVOICE_DUE_DAY}.`,
 	"Em caso de atraso, as funções de gestão podem ser restritas até a regularização; os moradores nunca perdem acesso às próprias cobranças.",
-	"Você pode cancelar quando quiser, pelos canais de contato (Termos de Uso, seção 14); o cancelamento vale no fim do mês corrente.",
+	"Faturas abaixo de R$ 5,00 não são cobradas.",
+	"Você pode encerrar a administradora quando quiser, na página Plano: vale na hora, o mês é cobrado pelos dias usados e as faturas emitidas continuam disponíveis para pagamento.",
 ];
 
 export type NextStep = { title: string; text: string };
@@ -82,7 +83,7 @@ export function nextSteps(input: {
 		},
 		{
 			title: "Mudanças e cancelamento",
-			text: "Trocar de plano, na página Plano, vale a partir da fatura seguinte. Para cancelar, fale conosco a qualquer momento pelos canais de contato (Termos de Uso, seção 14); o cancelamento vale no fim do mês corrente.",
+			text: "Trocar de plano, na página Plano, vale a partir da fatura seguinte. Você também pode encerrar a administradora por lá a qualquer momento: a gestão termina na hora, o mês é cobrado pelos dias usados e as faturas continuam disponíveis em Faturas do Quartier Flow (Termos de Uso, seção 8.3).",
 		},
 	];
 }

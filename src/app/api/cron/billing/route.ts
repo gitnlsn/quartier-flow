@@ -1,21 +1,11 @@
-import { timingSafeEqual } from "node:crypto";
-
-import { env } from "~/env";
 import {
 	BillingError,
 	periodOf,
 	prepareRun,
 	sendRun,
 } from "~/server/billing/runs";
+import { cronAuthorized, cronToday } from "~/server/cron";
 import { db } from "~/server/db";
-
-function authorized(request: Request) {
-	const header = request.headers.get("authorization") ?? "";
-	const expected = `Bearer ${env.CRON_SECRET}`;
-	const a = Buffer.from(header);
-	const b = Buffer.from(expected);
-	return a.length === b.length && timingSafeEqual(a, b);
-}
 
 /**
  * Daily billing job. For every condominium whose generation day is today:
@@ -23,23 +13,25 @@ function authorized(request: Request) {
  * and send) and, in automatic mode, send it. The period is the month of the
  * next due date: same month when dueDay > generationDay, otherwise next month.
  *
+ * Condominiums of closed administradoras are skipped.
+ *
  * Outside production, `?date=YYYY-MM-DD` simulates another day for testing.
  */
 export async function GET(request: Request) {
-	if (!authorized(request)) {
+	if (!cronAuthorized(request)) {
 		return new Response("Unauthorized", { status: 401 });
 	}
 
-	const url = new URL(request.url);
-	const simulated = url.searchParams.get("date");
-	const today =
-		simulated && env.NODE_ENV !== "production"
-			? new Date(`${simulated}T12:00:00Z`)
-			: new Date();
+	const today = cronToday(request);
 	const day = today.getUTCDate();
 
 	const configs = await db.billingConfig.findMany({
-		where: { enabled: true, generationDay: day },
+		where: {
+			enabled: true,
+			generationDay: day,
+			// Closed administradoras never bill again (docs/features/19).
+			condominium: { administradora: { closedAt: null } },
+		},
 		select: { condominiumId: true, mode: true, dueDay: true },
 	});
 

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
   // Further reading:
   // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
@@ -129,26 +129,32 @@ model Newsletter {
 // ---------------------------------------------------------------------------
 
 model Administradora {
-  id            String   @id @default(cuid())
-  name          String
-  cnpj          String   @unique // digits only
-  companyType   String? // Asaas: LIMITED | ASSOCIATION | MEI | INDIVIDUAL
-  email         String
-  mobilePhone   String?
-  incomeValue   Int? // monthly revenue in BRL, required by Asaas KYC
-  postalCode    String?
-  address       String?
-  addressNumber String?
-  complement    String?
-  province      String? // bairro
-  status        String   @default("onboarding") // onboarding | active
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  cnpj            String    @unique // digits only
+  companyType     String? // Asaas: LIMITED | ASSOCIATION | MEI | INDIVIDUAL
+  email           String
+  mobilePhone     String?
+  incomeValue     Int? // monthly revenue in BRL, required by Asaas KYC
+  postalCode      String?
+  address         String?
+  addressNumber   String?
+  complement      String?
+  province        String? // bairro
+  status          String    @default("onboarding") // onboarding | active | closed
+  /// Asaas customer on our main account, billed for the platform (docs/features/18)
+  asaasCustomerId String?   @unique
+  /// Closed by its admin: no management, no new invoices (docs/features/19)
+  closedAt        DateTime?
+  closedById      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  members       AdministradoraMember[]
-  condominiums  Condominium[]
-  plans         AdministradoraPlan[]
-  payoutAccount PayoutAccount?
+  members          AdministradoraMember[]
+  condominiums     Condominium[]
+  plans            AdministradoraPlan[]
+  payoutAccount    PayoutAccount?
+  platformInvoices PlatformInvoice[]
 }
 
 model AdministradoraMember {
@@ -255,6 +261,38 @@ model AdministradoraPlan {
   updatedAt        DateTime       @updatedAt
 
   @@index([administradoraId])
+}
+
+/// Monthly Quartier Flow invoice to an administradora (docs/features/18):
+/// seats active at the end of the billed range, prorated by days, charged
+/// from our main Asaas account. A snapshot: never recomputed after issuing.
+model PlatformInvoice {
+  id                String         @id @default(cuid())
+  administradoraId  String
+  administradora    Administradora @relation(fields: [administradoraId], references: [id], onDelete: Cascade)
+  period            String // YYYY-MM billed
+  periodStart       DateTime // first billed day
+  periodEnd         DateTime // last billed day
+  planId            String
+  planName          String
+  residentSeats     Int
+  sindicoSeats      Int
+  residentSeatCents Int
+  sindicoSeatCents  Int
+  billedDays        Int
+  daysInMonth       Int
+  totalCents        Int
+  dueDate           DateTime
+  status            String         @default("pending") // pending | paid | overdue | canceled | failed | waived
+  issue             String?
+  asaasPaymentId    String?        @unique
+  invoiceUrl        String?
+  paidAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([administradoraId, period])
+  @@index([status])
 }
 
 // ---------------------------------------------------------------------------

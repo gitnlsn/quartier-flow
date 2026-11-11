@@ -375,6 +375,16 @@ const ERROR_CODE_MESSAGE: Record<string, string> = {
 	INTERNAL_SERVER_ERROR: "Algo deu errado do nosso lado. Tente novamente.",
 };
 
+/** Quartier Flow invoice to the administradora (docs/features/18). */
+export const INVOICE_STATUS: Record<string, { label: string; tone: Tone }> = {
+	pending: { label: "Em aberto", tone: "warning" },
+	overdue: { label: "Vencida", tone: "danger" },
+	paid: { label: "Paga", tone: "success" },
+	waived: { label: "Dispensada", tone: "neutral" },
+	canceled: { label: "Cancelada", tone: "neutral" },
+	failed: { label: "Em emissão", tone: "info" },
+};
+
 export const KYC_LABEL: Record<string, string> = {
 	pending: "Pendente",
 	awaiting_approval: "Em análise",

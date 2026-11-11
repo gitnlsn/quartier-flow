@@ -1,5 +1,21 @@
-import { getAccess, getActivePlan } from "~/server/access";
+import { TERMS_VERSION } from "~/lib/terms";
+import {
+	billingAdministradoras,
+	getAccess,
+	getActivePlan,
+} from "~/server/access";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import type { db as Db } from "~/server/db";
+
+async function termsOutdated(db: typeof Db, administradoraId: string) {
+	if (!(await getActivePlan(db, administradoraId))) return false;
+	const latest = await db.termsAcceptance.findFirst({
+		where: { administradoraId },
+		orderBy: { acceptedAt: "desc" },
+		select: { termsVersion: true },
+	});
+	return latest?.termsVersion !== TERMS_VERSION;
+}
 
 /** Features shared by every signed-in user (resident, síndico, administradora). */
 export const portalRouter = createTRPCRouter({
@@ -8,6 +24,17 @@ export const portalRouter = createTRPCRouter({
 		const access = await getAccess(ctx.db, ctx.session.user.id);
 		const isAdmin = Boolean(access.administradoraId);
 		const isSindico = access.sindicoCondominiumIds.length > 0;
+		const billing = await billingAdministradoras(ctx.db, ctx.session.user.id);
+		const openInvoices = billing.length
+			? await ctx.db.platformInvoice.findMany({
+					where: {
+						administradoraId: { in: billing.map((a) => a.id) },
+						status: { in: ["pending", "overdue"] },
+					},
+					select: { totalCents: true, status: true },
+				})
+			: [];
+		const closed = isAdmin ? null : billing.find((a) => a.closedAt);
 		return {
 			firstName: ctx.session.user.name?.split(" ")[0] ?? "",
 			email: ctx.session.user.email,
@@ -20,6 +47,22 @@ export const portalRouter = createTRPCRouter({
 			adminNeedsPlan: access.administradoraId
 				? !(await getActivePlan(ctx.db, access.administradoraId))
 				: false,
+			/** Quartier Flow invoices still to pay (docs/features/18). */
+			openInvoices: {
+				count: openInvoices.length,
+				totalCents: openInvoices.reduce((sum, i) => sum + i.totalCents, 0),
+				overdue: openInvoices.some((i) => i.status === "overdue"),
+			},
+			/**
+			 * The Termos de Uso changed after this admin's administradora signed:
+			 * ask to accept the current version (docs/features/19).
+			 */
+			termsOutdated:
+				isAdmin && access.administradoraId
+					? await termsOutdated(ctx.db, access.administradoraId)
+					: false,
+			/** Administradora this user closed (offer to reopen it). */
+			closedAdministradora: closed ? { name: closed.name } : null,
 		};
 	}),
 

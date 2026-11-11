@@ -5,6 +5,7 @@ import { expenseRouter } from "~/server/api/routers/expense";
 import { helloRouter } from "~/server/api/routers/hello";
 import { newsletterRouter } from "~/server/api/routers/newsletter";
 import { onboardingRouter } from "~/server/api/routers/onboarding";
+import { platformBillingRouter } from "~/server/api/routers/platform-billing";
 import { portalRouter } from "~/server/api/routers/portal";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
 	condominium: condominiumRouter,
 	billing: billingRouter,
 	expense: expenseRouter,
+	platformBilling: platformBillingRouter,
 });
 
 // export type definition of API

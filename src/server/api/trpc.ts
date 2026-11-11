@@ -141,8 +141,13 @@ export const protectedProcedure = t.procedure
  * `ctx.administradoraId`. Every query in the management area must be scoped by it.
  */
 export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+	// Closed administradoras are a read-only archive: no management.
 	const member = await ctx.db.administradoraMember.findFirst({
-		where: { userId: ctx.session.user.id, role: "admin" },
+		where: {
+			userId: ctx.session.user.id,
+			role: "admin",
+			administradora: { closedAt: null },
+		},
 		select: { administradoraId: true },
 		orderBy: { createdAt: "asc" },
 	});

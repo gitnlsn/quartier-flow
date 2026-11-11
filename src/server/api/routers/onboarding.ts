@@ -16,17 +16,32 @@ const companyInput = z.object({
 });
 
 /**
+ * The administradora this wizard works on: the user's open one or, to
+ * reopen it, the closed one they managed last.
+ */
+function wizardAdministradoraId(access: {
+	administradoraId: string | null;
+	closedAdministradoraIds: string[];
+}) {
+	return (
+		access.administradoraId ?? access.closedAdministradoraIds.at(-1) ?? null
+	);
+}
+
+/**
  * Becoming an administradora (docs/features/19): any signed-in user can
  * register one administradora and sign a plan, accepting the Termos de Uso.
+ * A closed administradora is reopened the same way.
  */
 export const onboardingRouter = createTRPCRouter({
 	/** Where the person is in the wizard (resumable). */
 	state: protectedProcedure.query(async ({ ctx }) => {
 		const access = await getAccess(ctx.db, ctx.session.user.id);
-		const administradora = access.administradoraId
+		const administradoraId = wizardAdministradoraId(access);
+		const administradora = administradoraId
 			? await ctx.db.administradora.findUnique({
-					where: { id: access.administradoraId },
-					select: { id: true, name: true, cnpj: true },
+					where: { id: administradoraId },
+					select: { id: true, name: true, cnpj: true, closedAt: true },
 				})
 			: null;
 		const active = administradora
@@ -67,12 +82,13 @@ export const onboardingRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
 			const access = await getAccess(ctx.db, userId);
+			const targetId = wizardAdministradoraId(access);
 
 			const taken = await ctx.db.administradora.findUnique({
 				where: { cnpj: input.cnpj },
 				select: { id: true },
 			});
-			if (taken && taken.id !== access.administradoraId) {
+			if (taken && taken.id !== targetId) {
 				throw new TRPCError({
 					code: "CONFLICT",
 					message:
@@ -80,8 +96,8 @@ export const onboardingRouter = createTRPCRouter({
 				});
 			}
 
-			if (access.administradoraId) {
-				if (await getActivePlan(ctx.db, access.administradoraId)) {
+			if (targetId) {
+				if (await getActivePlan(ctx.db, targetId)) {
 					throw new TRPCError({
 						code: "BAD_REQUEST",
 						message:
@@ -89,10 +105,10 @@ export const onboardingRouter = createTRPCRouter({
 					});
 				}
 				await ctx.db.administradora.update({
-					where: { id: access.administradoraId },
+					where: { id: targetId },
 					data: { name: input.companyName, cnpj: input.cnpj },
 				});
-				return { id: access.administradoraId };
+				return { id: targetId };
 			}
 
 			const administradora = await ctx.db.administradora.create({
@@ -130,7 +146,8 @@ export const onboardingRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const user = ctx.session.user;
 			const access = await getAccess(ctx.db, user.id);
-			if (!access.administradoraId) {
+			const targetId = wizardAdministradoraId(access);
+			if (!targetId) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
 					message: "Cadastre a administradora antes de assinar o plano.",
@@ -147,14 +164,14 @@ export const onboardingRouter = createTRPCRouter({
 				where: { id: input.planId, active: true },
 			});
 			if (!plan) throw new TRPCError({ code: "NOT_FOUND" });
-			if (await getActivePlan(ctx.db, access.administradoraId)) {
+			if (await getActivePlan(ctx.db, targetId)) {
 				throw new TRPCError({
 					code: "CONFLICT",
 					message: "O plano já foi assinado.",
 				});
 			}
 
-			const administradoraId = access.administradoraId;
+			const administradoraId = targetId;
 			const ipAddress =
 				ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
 				ctx.headers.get("x-real-ip") ??
@@ -164,6 +181,11 @@ export const onboardingRouter = createTRPCRouter({
 			const [subscription] = await ctx.db.$transaction([
 				ctx.db.administradoraPlan.create({
 					data: { administradoraId, planId: plan.id },
+				}),
+				// Signing (re)opens it: also reopens a closed administradora.
+				ctx.db.administradora.update({
+					where: { id: administradoraId },
+					data: { status: "active", closedAt: null, closedById: null },
 				}),
 				ctx.db.termsAcceptance.create({
 					data: {
@@ -221,6 +243,45 @@ export const onboardingRouter = createTRPCRouter({
 					].join("\n"),
 				}),
 			);
+			return { ok: true };
+		}),
+	/**
+	 * Accepts a new version of the Termos de Uso for the administradora the
+	 * user manages (shown when the text changed after signing).
+	 */
+	acceptTerms: protectedProcedure
+		.input(z.object({ termsVersion: z.string(), acceptTerms: z.literal(true) }))
+		.mutation(async ({ ctx, input }) => {
+			const access = await getAccess(ctx.db, ctx.session.user.id);
+			if (!access.administradoraId) throw new TRPCError({ code: "FORBIDDEN" });
+			if (input.termsVersion !== TERMS_VERSION) {
+				throw new TRPCError({
+					code: "CONFLICT",
+					message:
+						"Os Termos de Uso foram atualizados de novo. Recarregue a página e leia a nova versão.",
+				});
+			}
+			const active = await getActivePlan(ctx.db, access.administradoraId);
+			await ctx.db.termsAcceptance.create({
+				data: {
+					userId: ctx.session.user.id,
+					administradoraId: access.administradoraId,
+					planId: active?.planId ?? null,
+					termsVersion: TERMS_VERSION,
+					ipAddress:
+						ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+						ctx.headers.get("x-real-ip") ??
+						null,
+					userAgent: ctx.headers.get("user-agent")?.slice(0, 500) ?? null,
+				},
+			});
+			await audit({
+				administradoraId: access.administradoraId,
+				actorUserId: ctx.session.user.id,
+				action: "terms.accept",
+				entity: "terms",
+				entityId: TERMS_VERSION,
+			});
 			return { ok: true };
 		}),
 });

@@ -3,7 +3,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { getAccess, getActivePlan } from "~/server/access";
+import {
+	billingAdministradoras,
+	getAccess,
+	getActivePlan,
+	viewableCondominiums,
+} from "~/server/access";
 import { getSession } from "~/server/auth";
 import { db } from "~/server/db";
 import { AppShell } from "./_components/app-shell";
@@ -26,30 +31,27 @@ export default async function PainelLayout({
 	if (!session) redirect("/entrar");
 
 	const access = await getAccess(db, session.user.id);
-	const [administradora, activePlan, condos, cookieStore] = await Promise.all([
-		access.administradoraId
-			? db.administradora.findUnique({
-					where: { id: access.administradoraId },
-					select: { name: true },
-				})
-			: null,
-		access.administradoraId ? getActivePlan(db, access.administradoraId) : null,
-		// Condominiums for the sidebar switcher: all of the administradora's,
-		// plus those where the user is síndico.
-		db.condominium.findMany({
-			where: {
-				OR: [
-					...(access.administradoraId
-						? [{ administradoraId: access.administradoraId }]
-						: []),
-					{ id: { in: access.sindicoCondominiumIds } },
-				],
-			},
-			select: { id: true, name: true },
-			orderBy: { name: "asc" },
-		}),
-		cookies(),
-	]);
+	const [administradora, activePlan, condos, billing, cookieStore] =
+		await Promise.all([
+			access.administradoraId
+				? db.administradora.findUnique({
+						where: { id: access.administradoraId },
+						select: { name: true },
+					})
+				: null,
+			access.administradoraId
+				? getActivePlan(db, access.administradoraId)
+				: null,
+			// Condominiums for the sidebar switcher: the administradora's, its
+			// archive after closing, and those where the user is síndico.
+			db.condominium.findMany({
+				where: viewableCondominiums(access),
+				select: { id: true, name: true },
+				orderBy: { name: "asc" },
+			}),
+			billingAdministradoras(db, session.user.id),
+			cookies(),
+		]);
 
 	return (
 		<AppShell
@@ -58,6 +60,7 @@ export default async function PainelLayout({
 			contextName={administradora?.name ?? null}
 			isAdmin={Boolean(access.administradoraId)}
 			adminNeedsPlan={Boolean(access.administradoraId) && !activePlan}
+			hasPlatformBilling={billing.length > 0}
 			isSindico={access.sindicoCondominiumIds.length > 0}
 			condos={condos}
 			lastCondoId={cookieStore.get(LAST_CONDO_COOKIE)?.value ?? null}

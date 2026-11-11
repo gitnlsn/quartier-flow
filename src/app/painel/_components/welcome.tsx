@@ -1,5 +1,6 @@
-import { ArrowRight, Building2, Home, Mail } from "lucide-react";
+import { ArrowRight, Building2, FileText, Home, Mail } from "lucide-react";
 
+import { formatBRL } from "~/lib/br";
 import { Card, PageTitle } from "./ui";
 
 /**
@@ -9,9 +10,11 @@ import { Card, PageTitle } from "./ui";
 export function Welcome({
 	firstName,
 	email,
+	closedAdministradora,
 }: {
 	firstName: string;
 	email: string;
+	closedAdministradora?: string | null;
 }) {
 	return (
 		<div className="space-y-6">
@@ -41,7 +44,9 @@ export function Welcome({
 							href="/painel/comecar"
 							className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-5 font-medium text-primary-foreground hover:bg-primary/90"
 						>
-							Cadastrar minha administradora
+							{closedAdministradora
+								? `Reabrir ${closedAdministradora}`
+								: "Cadastrar minha administradora"}
 							<ArrowRight className="size-4" aria-hidden />
 						</a>
 					</div>
@@ -91,19 +96,75 @@ export function FinishSignupCard() {
 	);
 }
 
-/** Residents and síndicos who don't manage condominiums (yet). */
-export function BecomeAdminCard() {
+/** Residents and síndicos who don't manage condominiums (yet, or anymore). */
+export function BecomeAdminCard({
+	closedAdministradora,
+}: {
+	closedAdministradora?: string | null;
+}) {
 	return (
 		<Card
-			title="Administra condomínios?"
-			description="Cadastre sua administradora para gerenciar condomínios, moradores e cobranças."
+			title={
+				closedAdministradora
+					? `${closedAdministradora} está encerrada`
+					: "Administra condomínios?"
+			}
+			description={
+				closedAdministradora
+					? "Os condomínios ficam disponíveis só para consulta. Para voltar a gerenciar, reabra a administradora assinando um plano e os Termos de Uso novamente."
+					: "Cadastre sua administradora para gerenciar condomínios, moradores e cobranças."
+			}
 		>
 			<a
 				href="/painel/comecar"
 				className="inline-flex h-11 items-center gap-2 rounded-md border px-5 font-medium hover:bg-muted"
 			>
-				Cadastrar administradora <ArrowRight className="size-4" aria-hidden />
+				{closedAdministradora
+					? "Reabrir administradora"
+					: "Cadastrar administradora"}
+				<ArrowRight className="size-4" aria-hidden />
 			</a>
 		</Card>
+	);
+}
+
+/** Quartier Flow invoices still to pay; stays after closing (docs/features/18). */
+export function OpenInvoicesCard({
+	count,
+	totalCents,
+	overdue,
+}: {
+	count: number;
+	totalCents: number;
+	overdue: boolean;
+}) {
+	return (
+		<div
+			className={
+				overdue
+					? "flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4"
+					: "flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 p-4"
+			}
+		>
+			<div className="space-y-0.5">
+				<p className="flex items-center gap-2 font-medium">
+					<FileText className="size-4" aria-hidden />
+					{overdue
+						? "Fatura do Quartier Flow vencida"
+						: count === 1
+							? "Fatura do Quartier Flow em aberto"
+							: `${count} faturas do Quartier Flow em aberto`}
+				</p>
+				<p className="text-muted-foreground text-sm">
+					Total de {formatBRL(totalCents)}. Pague com boleto ou Pix.
+				</p>
+			</div>
+			<a
+				href="/painel/faturas"
+				className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-5 font-medium text-primary-foreground hover:bg-primary/90"
+			>
+				Ver faturas <ArrowRight className="size-4" aria-hidden />
+			</a>
+		</div>
 	);
 }

@@ -6,6 +6,7 @@ import {
 	assertActivePlan,
 	assertCanViewCondominium,
 	getAccess,
+	viewableCondominiums,
 } from "~/server/access";
 import {
 	adminProcedure,
@@ -68,14 +69,7 @@ export const condominiumRouter = createTRPCRouter({
 	list: protectedProcedure.query(async ({ ctx }) => {
 		const access = await getAccess(ctx.db, ctx.session.user.id);
 		const condos = await ctx.db.condominium.findMany({
-			where: {
-				OR: [
-					...(access.administradoraId
-						? [{ administradoraId: access.administradoraId }]
-						: []),
-					{ id: { in: access.sindicoCondominiumIds } },
-				],
-			},
+			where: viewableCondominiums(access),
 			orderBy: { name: "asc" },
 			include: {
 				billingConfig: { select: { enabled: true, mode: true } },

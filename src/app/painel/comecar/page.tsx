@@ -497,8 +497,16 @@ export default function ComecarPage() {
 	return (
 		<div className="mx-auto max-w-3xl">
 			<PageTitle
-				title="Cadastre sua administradora"
-				subtitle="Leva poucos minutos. Você revisa tudo antes de assinar."
+				title={
+					data.administradora?.closedAt
+						? `Reabrir ${data.administradora.name}`
+						: "Cadastre sua administradora"
+				}
+				subtitle={
+					data.administradora?.closedAt
+						? "A administradora está encerrada. Para voltar a gerenciar os condomínios, confira os dados, escolha um plano e aceite os Termos de Uso novamente."
+						: "Leva poucos minutos. Você revisa tudo antes de assinar."
+				}
 			/>
 			<Progress step={current} />
 			{current === 1 && (

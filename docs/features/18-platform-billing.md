@@ -1,6 +1,6 @@
 # 18 — Platform Billing (Quartier Flow's own revenue)
 
-**Status:** Partially implemented (plan choice, Nov/2026) · **Phase:** MVP · **Depends on:** 02, 17, 19
+**Status:** Partially implemented (plan choice, monthly invoices, closing — Nov/2026) · **Phase:** MVP · **Depends on:** 02, 17, 19
 
 ## Summary
 Quartier Flow charges each **administradora** monthly, from our main Asaas account (17).
@@ -100,7 +100,10 @@ model PlatformInvoice {
   síndicos active on its last day; **first invoice prorated** by days since signing.
   Sent by email with boleto/Pix, **due on the 10th**. Plan changes apply from the next
   invoice. Overdue: manager area may be restricted, residents never.
-- **Cancellation:** any time via the contact channels (Termos 14), effective at month end.
+- **Minimum:** invoices below R$ 5,00 (Asaas minimum for boleto/Pix) are recorded as `waived`, nothing to pay.
+- **Closing (self-service, replaces "cancel via contact"):** in Plano, effective immediately.
+  The month of closing is billed for the days used (seats on the closing day) on the 1st;
+  no invoices after that. Issued invoices stay payable forever in "Faturas do Quartier Flow".
 - Stated in Termos de Uso 8.1–8.3 (`src/lib/terms.ts`) and shown before signing
   (`src/lib/onboarding.ts`). Text to be reviewed by a lawyer.
 
@@ -113,4 +116,21 @@ model PlatformInvoice {
 ## Implementation (slice 1)
 - `Plan` catalog seeded by `scripts/seed-plans.ts` (**placeholder prices**), `AdministradoraPlan`; plan choice in onboarding and `/painel/plano` with seat count and monthly estimate.
 - Plan signing with Termos de Uso acceptance in the onboarding (19); `/painel/plano` only switches plans (confirmation dialog).
-- Not yet: add-ons, monthly invoice to the administradora, overdue handling, self-service cancellation.
+
+## Implementation (slice 2: monthly invoices)
+- `PlatformInvoice` (snapshot: period, billed range, plan, seats and prices, days, total, due date,
+  status `pending | paid | overdue | canceled | failed | waived`, Asaas payment), unique per
+  administradora + period. `Administradora.asaasCustomerId`.
+- `src/server/platform-billing.ts`: `computeInvoice` (range = signing day or 1st → closing day or
+  month end; seats via `countSeats(db, id, at)` in `src/server/seats.ts`; price = plan in force at
+  the end of the range; prorated by days) and `issueInvoice` (customer via
+  `ensureAdministradoraCustomer`, `createPayment` without split, due on the 10th or 3 days ahead
+  when retried late; email). Idempotent; `failed` invoices are retried.
+- Job `GET /api/cron/platform-invoices` (daily 10:00 UTC in `vercel.json`, `CRON_SECRET`;
+  `?date=` outside production): issues last month's invoice for administradoras with a plan in it,
+  closed ones included.
+- Asaas webhook: payments that aren't resident charges are matched to `PlatformInvoice`
+  (paid / overdue / canceled), never moving a paid invoice back except on refund/cancel.
+- UI: `/painel/faturas` (list, breakdown, "Pagar" → Asaas invoice page), sidebar item for anyone who
+  admin(ned) an administradora with a plan, home card for open/overdue invoices.
+- Not yet: add-ons, restricting management on overdue invoices, a real email provider in production.

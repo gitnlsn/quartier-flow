@@ -44,3 +44,40 @@ export async function ensureCustomer(user: {
 	});
 	return customer.id;
 }
+
+/**
+ * The administradora as a customer of our main account, billed for the
+ * platform (docs/features/18). Same lookup-before-create as ensureCustomer,
+ * keyed by "adm_<id>".
+ */
+export async function ensureAdministradoraCustomer(administradora: {
+	id: string;
+	name: string;
+	email: string;
+	cnpj: string;
+	asaasCustomerId: string | null;
+}): Promise<string> {
+	if (administradora.asaasCustomerId) return administradora.asaasCustomerId;
+
+	const externalReference = `adm_${administradora.id}`;
+	const found = await asaasRequest<AsaasList<AsaasCustomer>>(
+		"GET",
+		`/customers?externalReference=${encodeURIComponent(externalReference)}&limit=1`,
+	);
+	const customer =
+		found.data[0] ??
+		(await asaasRequest<AsaasCustomer>("POST", "/customers", {
+			body: {
+				name: administradora.name,
+				email: administradora.email,
+				cpfCnpj: administradora.cnpj,
+				externalReference,
+			},
+		}));
+
+	await db.administradora.update({
+		where: { id: administradora.id },
+		data: { asaasCustomerId: customer.id },
+	});
+	return customer.id;
+}

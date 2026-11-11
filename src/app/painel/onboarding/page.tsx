@@ -347,29 +347,38 @@ function PayoutAccount({
 					</a>
 				</div>
 			)}
-			{refresh.data?.sandbox && status !== "approved" && (
-				<div className="space-y-3 rounded-lg border border-warning border-dashed p-4 text-sm">
-					<p className="flex items-center gap-2 font-medium">
-						<Badge tone="warning">Ambiente de testes</Badge>
-						Aprovar sem enviar documentos
-					</p>
-					<p className="text-muted-foreground">
-						No Sandbox do Asaas o envio de documentos é simulado e os emails de
-						acesso vão para a conta principal. Este botão aprova a conta de
-						recebimento direto no Sandbox para você testar as cobranças. Ele não
-						aparece em produção.
-					</p>
-					<ErrorMessage message={errorMessage(approveSandbox.error)} />
-					<Button
-						variant="outline"
-						pending={approveSandbox.isPending}
-						onClick={() => approveSandbox.mutate()}
-					>
-						<FlaskConical aria-hidden />
-						Aprovar conta no Sandbox
-					</Button>
-				</div>
+			{refresh.data?.viaWebhooksOnly && status !== "approved" && (
+				<p className="rounded-md bg-muted p-3 text-muted-foreground text-sm">
+					Esta conta já existia no Asaas e foi conectada sem acesso direto: a
+					situação é atualizada automaticamente quando o Asaas avisa. Conclua a
+					verificação entrando no Asaas com o email {refresh.data.accountEmail}.
+				</p>
 			)}
+			{refresh.data?.sandbox &&
+				!refresh.data.viaWebhooksOnly &&
+				status !== "approved" && (
+					<div className="space-y-3 rounded-lg border border-warning border-dashed p-4 text-sm">
+						<p className="flex items-center gap-2 font-medium">
+							<Badge tone="warning">Ambiente de testes</Badge>
+							Aprovar sem enviar documentos
+						</p>
+						<p className="text-muted-foreground">
+							No Sandbox do Asaas o envio de documentos é simulado e os emails
+							de acesso vão para a conta principal. Este botão aprova a conta de
+							recebimento direto no Sandbox para você testar as cobranças. Ele
+							não aparece em produção.
+						</p>
+						<ErrorMessage message={errorMessage(approveSandbox.error)} />
+						<Button
+							variant="outline"
+							pending={approveSandbox.isPending}
+							onClick={() => approveSandbox.mutate()}
+						>
+							<FlaskConical aria-hidden />
+							Aprovar conta no Sandbox
+						</Button>
+					</div>
+				)}
 			<div className="flex flex-wrap items-center gap-3">
 				{link && docs.length === 0 && status !== "approved" && (
 					<a
