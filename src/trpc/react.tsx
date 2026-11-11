@@ -22,6 +22,12 @@ const getQueryClient = () => {
 	return clientQueryClientSingleton;
 };
 
+/** tRPC errors the UI handles itself (anything but a server crash). */
+function isExpectedError(error: Error) {
+	const code = (error as { data?: { code?: string } | null }).data?.code;
+	return Boolean(code && code !== "INTERNAL_SERVER_ERROR");
+}
+
 export const api = createTRPCReact<AppRouter>();
 
 /**
@@ -45,9 +51,13 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
 		api.createClient({
 			links: [
 				loggerLink({
+					// Only unexpected failures: expected errors (validation, permission,
+					// not found...) are shown in the forms, and logging them as
+					// console.error makes Next's dev overlay report them as issues.
 					enabled: (op) =>
-						process.env.NODE_ENV === "development" ||
-						(op.direction === "down" && op.result instanceof Error),
+						op.direction === "down" &&
+						op.result instanceof Error &&
+						!isExpectedError(op.result),
 				}),
 				httpBatchStreamLink({
 					transformer: SuperJSON,

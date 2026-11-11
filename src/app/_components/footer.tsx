@@ -8,6 +8,7 @@ export function Footer() {
 			{ label: "Preços", href: "/precos" },
 		],
 		conteudo: [
+			{ label: "Central de ajuda", href: "/ajuda" },
 			{ label: "Blog", href: "/blog" },
 			{ label: "FAQ", href: "/faq" },
 		],

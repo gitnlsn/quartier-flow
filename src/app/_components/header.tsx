@@ -68,6 +68,12 @@ export function Header() {
 					>
 						Blog
 					</a>
+					<a
+						href="/ajuda"
+						className="text-gray-300 text-sm transition-colors hover:text-white"
+					>
+						Ajuda
+					</a>
 					<button
 						onClick={() => scrollToSection("contact")}
 						className="border border-white bg-white px-4 py-2 font-bold text-black text-sm transition-all hover:bg-gray-100"
@@ -149,6 +155,12 @@ export function Header() {
 							className="px-4 py-2 text-left text-gray-300 text-sm transition-colors hover:text-white"
 						>
 							Blog
+						</a>
+						<a
+							href="/ajuda"
+							className="px-4 py-2 text-left text-gray-300 text-sm transition-colors hover:text-white"
+						>
+							Ajuda
 						</a>
 						<button
 							onClick={() => scrollToSection("contact")}

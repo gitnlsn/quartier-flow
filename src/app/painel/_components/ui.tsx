@@ -1,12 +1,16 @@
 "use client";
 
 import { cn } from "cn";
-import { AlertCircle, Loader2, X } from "lucide-react";
-import type {
-	ComponentProps,
-	InputHTMLAttributes,
-	ReactNode,
-	SelectHTMLAttributes,
+import { AlertCircle, LifeBuoy, Loader2, X } from "lucide-react";
+import {
+	type ComponentProps,
+	type InputHTMLAttributes,
+	type ReactNode,
+	type SelectHTMLAttributes,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
 } from "react";
 
 import { Alert, AlertDescription } from "~/components/ui/alert";
@@ -48,6 +52,21 @@ import { type MaskName, masks } from "~/lib/masks";
  * raw elements so the look stays consistent for residents, síndicos and
  * administradoras.
  */
+
+/** "Como funciona?" link to a Central de ajuda article (opens a new tab). */
+export function HelpLink({ slug }: { slug: string }) {
+	return (
+		<a
+			href={`/ajuda/${slug}`}
+			target="_blank"
+			rel="noreferrer"
+			className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
+		>
+			<LifeBuoy className="size-4" aria-hidden />
+			Como funciona?
+		</a>
+	);
+}
 
 export function PageTitle({
 	title,
@@ -132,24 +151,44 @@ export function Field({
 	error?: string;
 	children: ReactNode;
 }) {
+	// Errors come from the last submit: hide this field's error as soon as the
+	// person edits it, and show it again on the next submit or a new error.
+	const ref = useRef<HTMLLabelElement>(null);
+	const [edited, setEdited] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset when a new error arrives
+	useEffect(() => setEdited(false), [error]);
+	useEffect(() => {
+		const form = ref.current?.closest("form");
+		if (!form) return;
+		const onSubmit = () => setEdited(false);
+		form.addEventListener("submit", onSubmit);
+		return () => form.removeEventListener("submit", onSubmit);
+	}, []);
+	const shownError = edited ? undefined : error;
+
 	return (
 		// biome-ignore lint/a11y/noLabelWithoutControl: the control is passed as children
-		<label className="block space-y-1.5">
+		<label
+			ref={ref}
+			className="block space-y-1.5"
+			// Only while an error is shown: no extra renders while typing.
+			onChangeCapture={shownError ? () => setEdited(true) : undefined}
+		>
 			<span className="block font-medium text-sm">{label}</span>
 			{children}
-			{hint && !error && (
+			{hint && !shownError && (
 				<span className="block text-muted-foreground text-xs">{hint}</span>
 			)}
-			{error && (
+			{shownError && (
 				<span role="alert" className="block text-destructive text-sm">
-					{error}
+					{shownError}
 				</span>
 			)}
 		</label>
 	);
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
+export function Input(props: ComponentProps<"input">) {
 	return (
 		<UiInput {...props} className={cn("h-11 text-base", props.className)} />
 	);
@@ -169,30 +208,46 @@ export function MaskedInput({
 	value: string;
 	onValueChange: (value: string) => void;
 }) {
+	const ref = useRef<HTMLInputElement>(null);
+	// Caret to restore right after React writes the formatted value
+	// (synchronously: a deferred update loses keys typed in between).
+	const pendingCaret = useRef<number | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs after each new value
+	useLayoutEffect(() => {
+		const pos = pendingCaret.current;
+		pendingCaret.current = null;
+		const el = ref.current;
+		if (pos !== null && el && document.activeElement === el) {
+			el.setSelectionRange(pos, pos);
+		}
+	}, [value]);
+
 	return (
 		<Input
 			inputMode="numeric"
 			{...props}
+			ref={ref}
 			value={value}
 			onChange={(e) => {
 				const el = e.target;
 				const raw = el.value;
 				const formatted = masks[mask](raw);
-				onValueChange(formatted);
-				if (mask === "money") return; // fills from the right: caret stays at the end
 				const caret = el.selectionStart ?? raw.length;
-				const digitsBefore = raw.slice(0, caret).replace(/\D/g, "").length;
-				let pos = 0;
-				for (
-					let seen = 0;
-					pos < formatted.length && seen < digitsBefore;
-					pos++
-				) {
-					if (/\d/.test(formatted[pos] ?? "")) seen++;
+				// Typing at the end (the usual case) or money (fills from the
+				// right): the browser keeps the caret at the end by itself.
+				if (mask !== "money" && caret < raw.length) {
+					const digitsBefore = raw.slice(0, caret).replace(/\D/g, "").length;
+					let pos = 0;
+					for (
+						let seen = 0;
+						pos < formatted.length && seen < digitsBefore;
+						pos++
+					) {
+						if (/\d/.test(formatted[pos] ?? "")) seen++;
+					}
+					pendingCaret.current = pos;
 				}
-				requestAnimationFrame(() => {
-					if (document.activeElement === el) el.setSelectionRange(pos, pos);
-				});
+				onValueChange(formatted);
 			}}
 		/>
 	);

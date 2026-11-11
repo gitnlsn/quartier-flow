@@ -9,6 +9,7 @@ import {
 	Badge,
 	Card,
 	EmptyState,
+	HelpLink,
 	INVOICE_STATUS,
 	Loading,
 	PageTitle,
@@ -85,6 +86,7 @@ export default function FaturasPage() {
 			<PageTitle
 				title="Faturas do Quartier Flow"
 				subtitle="A mensalidade da plataforma: emitida no dia 1º, referente ao mês anterior, com vencimento no dia 10."
+				actions={<HelpLink slug="faturas-do-quartier-flow" />}
 			/>
 			{administradoras.some((a) => a.closedAt) && (
 				<p className="rounded-lg bg-muted p-4 text-muted-foreground text-sm">

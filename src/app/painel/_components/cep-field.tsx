@@ -95,7 +95,7 @@ export function CepField({
 	return (
 		<Field
 			label="CEP"
-			hint={<span aria-live="polite">{hint}</span>}
+			hint={disabled ? undefined : <span aria-live="polite">{hint}</span>}
 			error={status.kind === "not_found" ? "CEP não encontrado" : error}
 		>
 			<MaskedInput

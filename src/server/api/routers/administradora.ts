@@ -41,12 +41,17 @@ const companySchema = z.object({
 	mobilePhone: z
 		.string()
 		.transform(onlyDigits)
-		.refine((v) => v.length === 10 || v.length === 11, "Telefone inválido"),
+		.refine((v) => v.length > 0, "Informe o celular")
+		.refine(
+			(v) => v.length === 0 || v.length === 10 || v.length === 11,
+			"Telefone inválido",
+		),
 	incomeValue: z.coerce.number().int().positive("Informe o faturamento mensal"),
 	postalCode: z
 		.string()
 		.transform(onlyDigits)
-		.refine((v) => v.length === 8, "CEP inválido"),
+		.refine((v) => v.length > 0, "Informe o CEP")
+		.refine((v) => v.length === 0 || v.length === 8, "CEP inválido"),
 	address: z.string().trim().min(2, "Informe o endereço"),
 	addressNumber: z.string().trim().min(1, "Informe o número"),
 	complement: z.string().trim().optional(),

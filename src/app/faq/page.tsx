@@ -169,6 +169,13 @@ export default function FAQPage() {
 								Encontre respostas para as perguntas mais comuns sobre o
 								Quartier Flow
 							</p>
+							<p className="mt-6 text-gray-400">
+								Procurando o passo a passo de alguma tela?{" "}
+								<a href="/ajuda" className="underline hover:text-white">
+									Veja a Central de ajuda
+								</a>
+								.
+							</p>
 						</div>
 					</Container>
 				</Section>

@@ -15,6 +15,7 @@ import {
 	Card,
 	ErrorMessage,
 	Field,
+	HelpLink,
 	Input,
 	Loading,
 	MaskedInput,
@@ -70,8 +71,14 @@ function BackButton({ onClick }: { onClick: () => void }) {
 }
 
 function NameStep({ state, onDone }: { state: State; onDone: () => void }) {
+	const router = useRouter();
 	const [name, setName] = useState(state.name);
-	const save = api.onboarding.saveName.useMutation({ onSuccess: onDone });
+	const save = api.onboarding.saveName.useMutation({
+		onSuccess: () => {
+			router.refresh(); // sidebar shows the new name
+			onDone();
+		},
+	});
 	const errors = fieldErrors(save.error);
 
 	function submit(event: FormEvent<HTMLFormElement>) {
@@ -507,6 +514,7 @@ export default function ComecarPage() {
 						? "A administradora está encerrada. Para voltar a gerenciar os condomínios, confira os dados, escolha um plano e aceite os Termos de Uso novamente."
 						: "Leva poucos minutos. Você revisa tudo antes de assinar."
 				}
+				actions={<HelpLink slug="criar-conta-e-assinar-plano" />}
 			/>
 			<Progress step={current} />
 			{current === 1 && (

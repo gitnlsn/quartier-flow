@@ -12,6 +12,7 @@ import {
 	Landmark,
 	LayoutDashboard,
 	LayoutGrid,
+	LifeBuoy,
 	LogOut,
 	Menu,
 	Receipt,
@@ -48,6 +49,8 @@ type NavItem = {
 	label: string;
 	icon: ReactNode;
 	exact?: boolean;
+	/** Opens in a new tab (pages outside the app, e.g. /ajuda). */
+	external?: boolean;
 };
 type NavGroup = { title?: string; items: NavItem[] };
 type CondoOption = { id: string; name: string };
@@ -127,6 +130,12 @@ function buildGroups(
 						},
 					]
 				: []),
+			{
+				href: "/ajuda",
+				label: "Ajuda",
+				icon: <LifeBuoy />,
+				external: true,
+			},
 		],
 	});
 	if (isAdmin && adminNeedsPlan) {
@@ -190,6 +199,7 @@ function NavLinks({
 							<a
 								key={item.href}
 								href={item.href}
+								{...(item.external && { target: "_blank", rel: "noreferrer" })}
 								onClick={onNavigate}
 								aria-current={active ? "page" : undefined}
 								className={cn(

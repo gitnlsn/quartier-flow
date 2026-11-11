@@ -13,6 +13,7 @@ import {
 	Card,
 	ErrorMessage,
 	Field,
+	HelpLink,
 	Input,
 	KYC_LABEL,
 	KYC_TONE,
@@ -102,6 +103,7 @@ function CompanyForm({
 					/>
 				</Field>
 				<CepField
+					disabled={locked}
 					value={form.postalCode}
 					onValueChange={(postalCode) => setForm((f) => ({ ...f, postalCode }))}
 					onAddress={(found) => {
@@ -180,6 +182,12 @@ function CompanyForm({
 		</form>
 	);
 }
+
+/** Asaas sometimes sends a role ("diretor") instead of the person's name. */
+const isRoleWord = (name: string) =>
+	/^(diretor|diretora|s[óo]cio|s[óo]cia|administrador|administradora|respons[áa]vel|titular)$/i.test(
+		name.trim(),
+	);
 
 const DOC_STATUS: Record<
 	string,
@@ -282,7 +290,7 @@ function PayoutAccount({
 							<div className="min-w-0 space-y-1">
 								<p className="font-medium text-sm">
 									{doc.title}
-									{doc.responsible && (
+									{doc.responsible && !isRoleWord(doc.responsible) && (
 										<span className="font-normal text-muted-foreground">
 											{" "}
 											· {doc.responsible}
@@ -434,6 +442,7 @@ export default function OnboardingPage() {
 			<PageTitle
 				title="Configuração da administradora"
 				subtitle={`${data.name} · CNPJ ${formatCnpj(data.cnpj)}`}
+				actions={<HelpLink slug="conta-de-recebimento-asaas" />}
 			/>
 			<Step
 				title={

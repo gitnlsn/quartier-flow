@@ -24,7 +24,10 @@ function NewCondominiumForm({ onDone }: { onDone: () => void }) {
 	const router = useRouter();
 	const [form, setForm] = useState({ name: "", cnpj: "", address: "" });
 	const create = api.condominium.create.useMutation({
-		onSuccess: (condo) => router.push(`/painel/condominios/${condo.id}`),
+		onSuccess: (condo) => {
+			router.push(`/painel/condominios/${condo.id}`);
+			router.refresh(); // sidebar: switcher and modules of the new condominium
+		},
 	});
 	const errors = fieldErrors(create.error);
 

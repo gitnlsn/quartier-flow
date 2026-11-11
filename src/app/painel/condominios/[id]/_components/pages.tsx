@@ -9,7 +9,12 @@ import { formatPeriod } from "~/lib/billing-items";
 import { formatCnpj } from "~/lib/br";
 import { api } from "~/trpc/react";
 import { condoPath } from "../../../_components/condo-nav";
-import { Badge, PageTitle, RUN_STATUS_LABEL } from "../../../_components/ui";
+import {
+	Badge,
+	HelpLink,
+	PageTitle,
+	RUN_STATUS_LABEL,
+} from "../../../_components/ui";
 import { ChargesTab, SettingsTab } from "./billing-tab";
 import { useCondo } from "./condo-context";
 import { ExpensesTab } from "./expenses-tab";
@@ -21,9 +26,12 @@ import { UnitsTab } from "./units-tab";
 function ModuleTitle({
 	title,
 	actions,
+	help,
 }: {
 	title: string;
 	actions?: ReactNode;
+	/** Central de ajuda article for this module. */
+	help?: string;
 }) {
 	const condo = useCondo();
 	return (
@@ -35,7 +43,14 @@ function ModuleTitle({
 					{!condo.canManage && <Badge>Somente visualização</Badge>}
 				</span>
 			}
-			actions={actions}
+			actions={
+				actions || help ? (
+					<>
+						{help && <HelpLink slug={help} />}
+						{actions}
+					</>
+				) : undefined
+			}
 		/>
 	);
 }
@@ -81,6 +96,7 @@ export function ChargesFrame({ children }: { children: ReactNode }) {
 		<div className="space-y-4">
 			<ModuleTitle
 				title="Cobranças"
+				help="enviar-cobrancas-do-mes"
 				actions={
 					latest && (
 						<a
@@ -142,7 +158,7 @@ export function HistoryPage() {
 export function ExpensesPage() {
 	return (
 		<>
-			<ModuleTitle title="Despesas" />
+			<ModuleTitle title="Despesas" help="despesas-e-notas" />
 			<ExpensesTab condo={useCondo()} />
 		</>
 	);
@@ -151,7 +167,10 @@ export function ExpensesPage() {
 export function UnitsPage() {
 	return (
 		<>
-			<ModuleTitle title="Unidades e moradores" />
+			<ModuleTitle
+				title="Unidades e moradores"
+				help="convidar-moradores-e-sindicos"
+			/>
 			<UnitsTab condo={useCondo()} />
 		</>
 	);
@@ -160,7 +179,7 @@ export function UnitsPage() {
 export function SettingsPage() {
 	return (
 		<>
-			<ModuleTitle title="Configurações" />
+			<ModuleTitle title="Configurações" help="enviar-cobrancas-do-mes" />
 			<SettingsTab condo={useCondo()} />
 		</>
 	);
