@@ -65,6 +65,11 @@ async function handlePayment(event: AsaasEvent) {
 		data: {
 			asaasPaymentId: payment.id,
 			invoiceUrl: payment.invoiceUrl ?? charge.invoiceUrl,
+			// Asaas is the source of truth for the due date (it can change on
+			// PAYMENT_UPDATED, e.g. a renegotiated due date).
+			...(payment.dueDate
+				? { dueDate: new Date(`${payment.dueDate}T00:00:00Z`) }
+				: {}),
 			...(status ? { status } : {}),
 			...(paid
 				? {

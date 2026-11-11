@@ -25,6 +25,7 @@ export const portalRouter = createTRPCRouter({
 			include: {
 				condominium: { select: { name: true } },
 				unit: { select: { block: true, number: true } },
+				lines: { orderBy: { createdAt: "asc" } },
 			},
 		});
 		return charges.map((charge) => ({
@@ -35,6 +36,13 @@ export const portalRouter = createTRPCRouter({
 			dueDate: charge.dueDate,
 			status: charge.status,
 			invoiceUrl: charge.invoiceUrl,
+			lines: charge.lines.map((line) => ({
+				id: line.id,
+				name: line.name,
+				description: line.description,
+				installment: line.installment,
+				amountCents: line.amountCents,
+			})),
 			condominium: charge.condominium.name,
 			unit: charge.unit.block
 				? `${charge.unit.block} · ${charge.unit.number}`

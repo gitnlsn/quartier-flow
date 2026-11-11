@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "cn";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, X } from "lucide-react";
 import type {
 	ComponentProps,
 	InputHTMLAttributes,
@@ -24,11 +24,21 @@ import {
 import { Badge as UiBadge } from "~/components/ui/badge";
 import { Button as UiButton } from "~/components/ui/button";
 import {
+	CardAction,
 	CardContent,
+	CardDescription,
 	CardHeader,
 	CardTitle,
 	Card as UiCard,
 } from "~/components/ui/card";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog";
 import { Input as UiInput } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 
@@ -63,21 +73,27 @@ export function PageTitle({
 export function Card({
 	title,
 	description,
+	action,
 	children,
 	className,
 }: {
 	title?: ReactNode;
 	description?: ReactNode;
+	/** Buttons aligned with the title (top right). */
+	action?: ReactNode;
 	children: ReactNode;
 	className?: string;
 }) {
 	return (
 		<UiCard className={className}>
-			{(title || description) && (
+			{(title || description || action) && (
 				<CardHeader>
 					{title && <CardTitle className="text-lg">{title}</CardTitle>}
-					{description && (
-						<p className="text-muted-foreground text-sm">{description}</p>
+					{description && <CardDescription>{description}</CardDescription>}
+					{action && (
+						<CardAction className="flex flex-wrap justify-end gap-2">
+							{action}
+						</CardAction>
 					)}
 				</CardHeader>
 			)}
@@ -343,3 +359,52 @@ export const RUN_STATUS_TONE: Record<string, Tone> = {
 	sent: "success",
 	partially_failed: "danger",
 };
+
+/**
+ * Centered modal for forms and details (unit panel, invite, imports).
+ * Scrolls inside on small screens; `size` controls the max width.
+ */
+export function Modal({
+	open,
+	onOpenChange,
+	title,
+	description,
+	size = "md",
+	children,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	title: ReactNode;
+	description?: ReactNode;
+	size?: "md" | "lg" | "xl";
+	children: ReactNode;
+}) {
+	const width = {
+		md: "sm:max-w-lg",
+		lg: "sm:max-w-2xl",
+		xl: "sm:max-w-4xl",
+	}[size];
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent
+				showCloseButton={false}
+				className={cn("app max-h-[90vh] gap-0 overflow-y-auto p-0", width)}
+			>
+				<DialogHeader className="sticky top-0 z-10 flex-row items-start justify-between gap-4 border-b bg-popover p-5">
+					<div className="space-y-1">
+						<DialogTitle className="text-lg">{title}</DialogTitle>
+						{description && (
+							<DialogDescription>{description}</DialogDescription>
+						)}
+					</div>
+					<DialogClose asChild>
+						<UiButton variant="ghost" size="icon-sm" aria-label="Fechar">
+							<X aria-hidden />
+						</UiButton>
+					</DialogClose>
+				</DialogHeader>
+				<div className="p-5">{children}</div>
+			</DialogContent>
+		</Dialog>
+	);
+}

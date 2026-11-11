@@ -178,22 +178,25 @@ model Condominium {
   billingConfig BillingConfig?
   billingRuns   BillingRun[]
   charges       Charge[]
+  billingItems  BillingItem[]
+  unitItems     UnitBillingItem[]
 
   @@index([administradoraId])
 }
 
 model Unit {
-  id                 String      @id @default(cuid())
-  condominiumId      String
-  condominium        Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
-  block              String      @default("") // "" when the building has no blocks
-  number             String
-  monthlyAmountCents Int? // overrides BillingConfig.defaultAmountCents
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  block         String      @default("") // "" when the building has no blocks
+  number        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  memberships Membership[]
-  charges     Charge[]
+  memberships   Membership[]
+  charges       Charge[]
+  itemOverrides BillingItemOverride[]
+  items         UnitBillingItem[]
 
   @@unique([condominiumId, block, number])
   @@index([condominiumId])
@@ -278,18 +281,17 @@ model PaymentCustomer {
 }
 
 model BillingConfig {
-  id                 String      @id @default(cuid())
-  condominiumId      String      @unique
-  condominium        Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
-  enabled            Boolean     @default(false)
-  mode               String      @default("manual") // manual | automatic
-  defaultAmountCents Int         @default(0)
-  dueDay             Int         @default(10) // 1-28
-  generationDay      Int         @default(1) // 1-28, day the run is prepared (and sent if automatic)
-  finePercent        Decimal     @default(2) @db.Decimal(5, 2)
-  interestPercent    Decimal     @default(1) @db.Decimal(5, 2) // per month
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  condominiumId   String      @unique
+  condominium     Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  enabled         Boolean     @default(false)
+  mode            String      @default("manual") // manual | automatic
+  dueDay          Int         @default(10) // 1-28
+  generationDay   Int         @default(1) // 1-28, day the run is prepared (and sent if automatic)
+  finePercent     Decimal     @default(2) @db.Decimal(5, 2)
+  interestPercent Decimal     @default(1) @db.Decimal(5, 2) // per month
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }
 
 model BillingRun {
@@ -311,29 +313,30 @@ model BillingRun {
 }
 
 model Charge {
-  id              String      @id @default(cuid())
+  id              String       @id @default(cuid())
   condominiumId   String
-  condominium     Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  condominium     Condominium  @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
   unitId          String
-  unit            Unit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  unit            Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
   runId           String?
-  run             BillingRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  run             BillingRun?  @relation(fields: [runId], references: [id], onDelete: SetNull)
   payerUserId     String?
   type            String // monthly | extra | reservation | fine | agreement
   description     String
   amountCents     Int
   dueDate         DateTime
   // draft | skipped | pending | confirmed | received | overdue | canceled | refunded | failed
-  status          String      @default("draft")
+  status          String       @default("draft")
   issue           String? // why a draft can't be sent (no payer, missing CPF...) or Asaas error
-  asaasPaymentId  String?     @unique
+  asaasPaymentId  String?      @unique
   invoiceUrl      String?
   bankSlipUrl     String?
   paidAt          DateTime?
   paidAmountCents Int?
   feeCents        Int? // Asaas fee (value - netValue), paid by the administradora
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  lines           ChargeLine[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@unique([runId, unitId])
   @@index([condominiumId, status])
@@ -364,4 +367,91 @@ model AuditLog {
 
   @@index([administradoraId, createdAt])
   @@index([entity, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// Billing items (docs/features/03): what each unit pays, line by line.
+// Recurrence: "monthly" from startPeriod; "installments" for `installments`
+// months from startPeriod; "once" only in startPeriod. Periods are YYYY-MM.
+// ---------------------------------------------------------------------------
+
+/**
+ * Item every unit of the condominium pays (e.g. Taxa condominial).
+ */
+model BillingItem {
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  amountCents   Int
+  recurrence    String // monthly | installments | once
+  startPeriod   String
+  installments  Int?
+  archivedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  overrides BillingItemOverride[]
+
+  @@index([condominiumId])
+}
+
+/**
+ * Different amount of a shared item for one unit (e.g. penthouse).
+ */
+model BillingItemOverride {
+  id          String      @id @default(cuid())
+  itemId      String
+  item        BillingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  unitId      String
+  unit        Unit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  amountCents Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([itemId, unitId])
+  @@index([unitId])
+}
+
+/**
+ * Item only one unit pays (e.g. gas consumption, extra parking spot, fine).
+ */
+model UnitBillingItem {
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  unitId        String
+  unit          Unit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  amountCents   Int
+  recurrence    String // monthly | installments | once
+  startPeriod   String
+  installments  Int?
+  source        String      @default("manual") // manual | import
+  archivedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([unitId])
+  @@index([condominiumId, startPeriod])
+}
+
+/**
+ * Snapshot of the items of a charge: later item edits don't change it.
+ */
+model ChargeLine {
+  id          String   @id @default(cuid())
+  chargeId    String
+  charge      Charge   @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  kind        String // shared | individual
+  sourceId    String? // BillingItem.id or UnitBillingItem.id
+  name        String
+  description String?
+  installment String? // "2/6"
+  amountCents Int
+  createdAt   DateTime @default(now())
+
+  @@index([chargeId])
 }

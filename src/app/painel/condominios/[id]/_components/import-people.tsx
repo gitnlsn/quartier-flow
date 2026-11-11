@@ -14,6 +14,11 @@ import {
 } from "~/components/ui/table";
 import { type RouterOutputs, api } from "~/trpc/react";
 import {
+	downloadCsv,
+	guessColumns,
+	readSpreadsheet,
+} from "../../../_components/spreadsheet";
+import {
 	Badge,
 	Button,
 	ConfirmButton,
@@ -103,63 +108,12 @@ const STATUS: Record<Preview[number]["status"], { label: string; tone: Tone }> =
 		error: { label: "Erro", tone: "danger" },
 	};
 
-const normalize = (value: string) =>
-	value
-		.trim()
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/\p{Diacritic}/gu, "");
-
-function guessMapping(headers: string[]): Mapping {
-	const normalized = headers.map(normalize);
-	const mapping = {} as Mapping;
-	for (const field of FIELDS) {
-		const index = normalized.findIndex((h) => field.synonyms.includes(h));
-		mapping[field.key] = index >= 0 ? index : null;
-	}
-	return mapping;
-}
-
-function cellToText(value: unknown): string {
-	if (value === null || value === undefined) return "";
-	if (value instanceof Date) return value.toISOString().slice(0, 10);
-	return String(value).trim();
-}
-
-async function readFile(file: File): Promise<string[][]> {
-	const name = file.name.toLowerCase();
-	if (name.endsWith(".csv") || file.type === "text/csv") {
-		const Papa = (await import("papaparse")).default;
-		const text = await file.text();
-		const parsed = Papa.parse<string[]>(text, {
-			skipEmptyLines: "greedy",
-			delimiter: "", // auto-detect "," or ";" (common in Brazilian Excel)
-		});
-		return parsed.data.map((row) => row.map(cellToText));
-	}
-	if (name.endsWith(".xlsx")) {
-		const { readSheet } = await import("read-excel-file/browser");
-		const data = await readSheet(file);
-		return data
-			.map((row) => row.map(cellToText))
-			.filter((row) => row.some((cell) => cell !== ""));
-	}
-	throw new Error("Use um arquivo .csv ou .xlsx.");
-}
-
 function downloadTemplate() {
-	const csv = [
+	downloadCsv("modelo-moradores.csv", [
 		"Nome;Email;Bloco;Unidade;CPF;Responsável pelo pagamento;Tipo;Papel",
 		"Maria Silva;maria@exemplo.com;A;101;123.456.789-09;sim;proprietário;morador",
 		"João Souza;joao@exemplo.com;A;101;;não;dependente;morador",
-	].join("\n");
-	const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8" });
-	const url = URL.createObjectURL(blob);
-	const link = document.createElement("a");
-	link.href = url;
-	link.download = "modelo-moradores.csv";
-	link.click();
-	URL.revokeObjectURL(url);
+	]);
 }
 
 export function ImportPeople({
@@ -175,7 +129,9 @@ export function ImportPeople({
 	const [readError, setReadError] = useState<string | null>(null);
 	const [headers, setHeaders] = useState<string[]>([]);
 	const [rows, setRows] = useState<string[][]>([]);
-	const [mapping, setMapping] = useState<Mapping>(() => guessMapping([]));
+	const [mapping, setMapping] = useState<Mapping>(() =>
+		guessColumns([], FIELDS),
+	);
 	const [createMissingUnits, setCreateMissingUnits] = useState(true);
 	const [sendInvites, setSendInvites] = useState(true);
 
@@ -197,7 +153,7 @@ export function ImportPeople({
 		if (!file) return;
 		setReadError(null);
 		try {
-			const data = await readFile(file);
+			const data = await readSpreadsheet(file);
 			const [head, ...body] = data;
 			if (!head || body.length === 0) {
 				throw new Error(
@@ -207,7 +163,7 @@ export function ImportPeople({
 			setFileName(file.name);
 			setHeaders(head);
 			setRows(body);
-			setMapping(guessMapping(head));
+			setMapping(guessColumns(head, FIELDS));
 			setStep("map");
 		} catch (error) {
 			setReadError(

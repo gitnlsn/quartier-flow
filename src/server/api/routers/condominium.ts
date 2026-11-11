@@ -211,37 +211,6 @@ export const condominiumRouter = createTRPCRouter({
 			return { created: result.count };
 		}),
 
-	setUnitAmount: adminProcedure
-		.input(
-			z.object({
-				unitId: z.string(),
-				// null = use the condominium default
-				amountCents: z.number().int().min(0).nullable(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const unit = await ctx.db.unit.findFirst({
-				where: {
-					id: input.unitId,
-					condominium: { administradoraId: ctx.administradoraId },
-				},
-			});
-			if (!unit) throw new TRPCError({ code: "NOT_FOUND" });
-			await ctx.db.unit.update({
-				where: { id: unit.id },
-				data: { monthlyAmountCents: input.amountCents },
-			});
-			await audit({
-				administradoraId: ctx.administradoraId,
-				actorUserId: ctx.session.user.id,
-				action: "unit.set_amount",
-				entity: "unit",
-				entityId: unit.id,
-				data: { from: unit.monthlyAmountCents, to: input.amountCents },
-			});
-			return { ok: true };
-		}),
-
 	invitePerson: adminProcedure
 		.input(
 			z

@@ -109,3 +109,19 @@ Asaas customers, payment accounts and webhook events: see 17.
 - Residents: **Minhas cobranças** with "Pagar com Pix ou boleto" (Asaas `invoiceUrl`).
 - Code: `src/server/billing/runs.ts`, `src/server/api/routers/billing.ts`.
 - Not yet: extra/reservation/fine charges, editing or canceling sent charges, receipts, manual cash payments.
+
+## Billing items (Nov/2026)
+Each unit's monthly charge is the sum of **items**, shown line by line to the
+administradora (audit), to the resident ("Ver itens") and in the boleto description.
+- **Items for every unit** (`BillingItem`): name, description, fixed amount; a unit can
+  have its own amount (`BillingItemOverride`, e.g. penthouse).
+- **Items for one unit** (`UnitBillingItem`): e.g. gas consumption, extra parking spot,
+  fine. Added in Unidades → Itens or imported from CSV/XLSX (one-off items per month).
+- **Frequency** (both kinds): every month from a month; N installments from a month
+  (shown as "2/6"); or once in a given month. Rules in `src/lib/billing-items.ts`.
+- Each charge keeps a copy of its lines (`ChargeLine`), so later item edits don't
+  change charges already prepared/sent. Archiving an item stops it in future runs.
+- Migration from the old single amount: `scripts/migrate-billing-items.ts` (default
+  amount → "Taxa condominial"; unit amount → override). Run before dropping
+  `BillingConfig.defaultAmountCents` / `Unit.monthlyAmountCents` in any database.
+- Not yet: percentage items (e.g. fundo de reserva = 10%), rateio by fração ideal.

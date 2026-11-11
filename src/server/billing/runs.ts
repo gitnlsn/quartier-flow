@@ -1,10 +1,36 @@
 import "server-only";
 
+import { itemForPeriod } from "~/lib/billing-items";
+import { formatBRL } from "~/lib/br";
 import { AsaasError } from "~/server/asaas/client";
 import { ensureCustomer } from "~/server/asaas/customers";
 import { createPayment } from "~/server/asaas/payments";
 import { audit } from "~/server/audit";
 import { db } from "~/server/db";
+
+type LineDraft = {
+	kind: "shared" | "individual";
+	sourceId: string;
+	name: string;
+	description: string | null;
+	installment: string | null;
+	amountCents: number;
+};
+
+/** Boleto description with the item breakdown (Asaas limit: 500 chars). */
+function asaasDescription(
+	title: string,
+	lines: { name: string; installment: string | null; amountCents: number }[],
+) {
+	const items = lines
+		.map(
+			(line) =>
+				`${line.name}${line.installment ? ` (${line.installment})` : ""}: ${formatBRL(line.amountCents)}`,
+		)
+		.join("; ");
+	const text = items ? `${title}. ${items}` : title;
+	return text.length > 500 ? `${text.slice(0, 497)}...` : text;
+}
 
 export class BillingError extends Error {
 	constructor(message: string) {
@@ -46,6 +72,11 @@ export async function prepareRun(input: {
 		where: { id: input.condominiumId },
 		include: {
 			billingConfig: true,
+			billingItems: {
+				where: { archivedAt: null },
+				orderBy: { createdAt: "asc" },
+				include: { overrides: true },
+			},
 			units: {
 				orderBy: [{ block: "asc" }, { number: "asc" }],
 				include: {
@@ -53,6 +84,10 @@ export async function prepareRun(input: {
 						where: { endedAt: null, financiallyResponsible: true },
 						include: { user: { select: { id: true, cpf: true } } },
 						take: 1,
+					},
+					items: {
+						where: { archivedAt: null },
+						orderBy: { createdAt: "asc" },
 					},
 				},
 			},
@@ -77,7 +112,51 @@ export async function prepareRun(input: {
 
 	const dueDate = dueDateFor(input.period, config.dueDay);
 	const [year, month] = input.period.split("-");
-	const description = `Taxa condominial ${month}/${year} - ${condo.name}`;
+	const description = `Condomínio ${month}/${year} - ${condo.name}`;
+
+	// Items of each unit for this period: shared (with per-unit exception)
+	// then the unit's own items. Copied into ChargeLine as a snapshot.
+	const plan = condo.units.map((unit) => {
+		const lines: LineDraft[] = [];
+		for (const item of condo.billingItems) {
+			const applies = itemForPeriod(item, input.period);
+			if (!applies) continue;
+			const override = item.overrides.find((o) => o.unitId === unit.id);
+			lines.push({
+				kind: "shared",
+				sourceId: item.id,
+				name: item.name,
+				description: item.description,
+				installment: applies.installment,
+				amountCents: override?.amountCents ?? item.amountCents,
+			});
+		}
+		for (const item of unit.items) {
+			const applies = itemForPeriod(item, input.period);
+			if (!applies) continue;
+			lines.push({
+				kind: "individual",
+				sourceId: item.id,
+				name: item.name,
+				description: item.description,
+				installment: applies.installment,
+				amountCents: item.amountCents,
+			});
+		}
+		const amountCents = lines.reduce((sum, line) => sum + line.amountCents, 0);
+		const payer = unit.memberships[0]?.user;
+		const issue =
+			lines.length === 0
+				? "Nenhum item de cobrança neste mês"
+				: amountCents <= 0
+					? "Valor total da unidade é zero"
+					: !payer
+						? "Unidade sem responsável financeiro"
+						: !payer.cpf
+							? "Responsável financeiro sem CPF"
+							: null;
+		return { unit, lines, amountCents, payer, issue };
+	});
 
 	const run = await db.$transaction(async (tx) => {
 		const saved = existing
@@ -95,33 +174,23 @@ export async function prepareRun(input: {
 				});
 		await tx.charge.deleteMany({ where: { runId: saved.id, status: "draft" } });
 
-		await tx.charge.createMany({
-			data: condo.units.map((unit) => {
-				const amountCents =
-					unit.monthlyAmountCents ?? config.defaultAmountCents;
-				const payer = unit.memberships[0]?.user;
-				const issue =
-					amountCents <= 0
-						? "Valor da unidade é zero"
-						: !payer
-							? "Unidade sem responsável financeiro"
-							: !payer.cpf
-								? "Responsável financeiro sem CPF"
-								: null;
-				return {
+		for (const entry of plan) {
+			await tx.charge.create({
+				data: {
 					condominiumId: condo.id,
-					unitId: unit.id,
+					unitId: entry.unit.id,
 					runId: saved.id,
-					payerUserId: payer?.id ?? null,
+					payerUserId: entry.payer?.id ?? null,
 					type: "monthly",
-					description: `${description} - Unidade ${unitLabel(unit)}`,
-					amountCents,
+					description: `${description} - Unidade ${unitLabel(entry.unit)}`,
+					amountCents: entry.amountCents,
 					dueDate,
 					status: "draft",
-					issue,
-				};
-			}),
-		});
+					issue: entry.issue,
+					lines: { create: entry.lines },
+				},
+			});
+		}
 		return saved;
 	});
 
@@ -187,6 +256,7 @@ export async function sendRun(input: {
 
 	const charges = await db.charge.findMany({
 		where: { runId: run.id, status: "draft" },
+		include: { lines: { orderBy: { createdAt: "asc" } } },
 	});
 	let sent = 0;
 	let failed = 0;
@@ -212,7 +282,7 @@ export async function sendRun(input: {
 				customerId,
 				amountCents: charge.amountCents,
 				dueDate: charge.dueDate.toISOString().slice(0, 10),
-				description: charge.description,
+				description: asaasDescription(charge.description, charge.lines),
 				externalReference: charge.id,
 				finePercent: Number(config.finePercent),
 				interestPercent: Number(config.interestPercent),

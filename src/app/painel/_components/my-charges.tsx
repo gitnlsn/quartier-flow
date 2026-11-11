@@ -68,6 +68,39 @@ export function MyCharges({ onlyOpen = false }: { onlyOpen?: boolean }) {
 								<Badge tone={CHARGE_STATUS_TONE[charge.status]}>
 									{CHARGE_STATUS_LABEL[charge.status] ?? charge.status}
 								</Badge>
+								{charge.lines.length > 0 && (
+									<details className="pt-2 text-sm">
+										<summary className="cursor-pointer text-muted-foreground">
+											Ver itens ({charge.lines.length})
+										</summary>
+										<ul className="mt-2 space-y-1">
+											{charge.lines.map((line) => (
+												<li
+													key={line.id}
+													className="flex justify-between gap-4"
+												>
+													<span>
+														{line.name}
+														{line.installment && (
+															<span className="text-muted-foreground">
+																{" "}
+																({line.installment})
+															</span>
+														)}
+														{line.description && (
+															<span className="block text-muted-foreground text-xs">
+																{line.description}
+															</span>
+														)}
+													</span>
+													<span className="whitespace-nowrap">
+														{formatBRL(line.amountCents)}
+													</span>
+												</li>
+											))}
+										</ul>
+									</details>
+								)}
 							</div>
 							{charge.invoiceUrl && (
 								<a

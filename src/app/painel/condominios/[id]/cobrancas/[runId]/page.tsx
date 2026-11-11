@@ -50,6 +50,8 @@ function Summary({
 	);
 }
 
+const isDraftStatus = (status: string) => status === "draft";
+
 export default function RunPage() {
 	const { id, runId } = useParams<{ id: string; runId: string }>();
 	const utils = api.useUtils();
@@ -72,13 +74,37 @@ export default function RunPage() {
 	const ready = data.charges.filter((c) => c.status === "draft" && !c.issue);
 	const blocked = data.charges.filter((c) => c.status === "draft" && c.issue);
 	const total = ready.reduce((sum, c) => sum + c.amountCents, 0);
+	const counted = isDraftStatus(data.status)
+		? ready
+		: data.charges.filter(
+				(c) => !["draft", "skipped", "failed"].includes(c.status),
+			);
+	const totalsByName = new Map<
+		string,
+		{ name: string; cents: number; units: number }
+	>();
+	for (const charge of counted) {
+		for (const line of charge.lines) {
+			const entry = totalsByName.get(line.name) ?? {
+				name: line.name,
+				cents: 0,
+				units: 0,
+			};
+			entry.cents += line.amountCents;
+			entry.units += 1;
+			totalsByName.set(line.name, entry);
+		}
+	}
+	const itemTotals = [...totalsByName.values()].sort(
+		(a, b) => b.cents - a.cents,
+	);
 	const isDraft = data.status === "draft";
 	const [year, month] = data.period.split("-");
 
 	return (
 		<div className="space-y-6">
 			<a
-				href={`/painel/condominios/${id}?aba=cobranca`}
+				href={`/painel/condominios/${id}?aba=cobrancas`}
 				className="inline-flex items-center gap-1 text-muted-foreground text-sm hover:text-foreground"
 			>
 				<ArrowLeft className="size-4" aria-hidden /> {data.condominium.name}
@@ -172,6 +198,45 @@ export default function RunPage() {
 				</Card>
 			)}
 
+			{itemTotals.length > 0 && (
+				<Card
+					title="Resumo por item"
+					description={
+						isDraft
+							? "Soma das cobranças prontas para envio."
+							: "Soma das cobranças enviadas."
+					}
+				>
+					<ul className="divide-y">
+						{itemTotals.map((entry) => (
+							<li
+								key={entry.name}
+								className="flex justify-between gap-3 py-2 text-sm"
+							>
+								<span>
+									{entry.name}{" "}
+									<span className="text-muted-foreground">
+										· {entry.units} unidade(s)
+									</span>
+								</span>
+								<span className="font-medium">{formatBRL(entry.cents)}</span>
+							</li>
+						))}
+						<li className="flex justify-between gap-3 border-foreground/20 border-t-2 pt-3 font-semibold">
+							<span>
+								Total cobrado{" "}
+								<span className="font-normal text-muted-foreground text-sm">
+									· {counted.length} cobrança(s)
+								</span>
+							</span>
+							<span>
+								{formatBRL(itemTotals.reduce((sum, e) => sum + e.cents, 0))}
+							</span>
+						</li>
+					</ul>
+				</Card>
+			)}
+
 			<Card title={`Unidades (${data.charges.length})`}>
 				<Table>
 					<TableHeader>
@@ -203,7 +268,27 @@ export default function RunPage() {
 										<span className="text-muted-foreground">—</span>
 									)}
 								</TableCell>
-								<TableCell>{formatBRL(charge.amountCents)}</TableCell>
+								<TableCell>
+									<div className="font-medium">
+										{formatBRL(charge.amountCents)}
+									</div>
+									{charge.lines.length > 0 && (
+										<ul className="mt-1 space-y-0.5 text-muted-foreground text-xs">
+											{charge.lines.map((line) => (
+												<li
+													key={line.id}
+													className="flex justify-between gap-3"
+												>
+													<span>
+														{line.name}
+														{line.installment && ` (${line.installment})`}
+													</span>
+													<span>{formatBRL(line.amountCents)}</span>
+												</li>
+											))}
+										</ul>
+									)}
+								</TableCell>
 								<TableCell>
 									<Badge
 										tone={
