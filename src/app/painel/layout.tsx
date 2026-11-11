@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { getAccess } from "~/server/access";
+import { getAccess, getActivePlan } from "~/server/access";
 import { getSession } from "~/server/auth";
 import { db } from "~/server/db";
 import { AppShell } from "./_components/app-shell";
@@ -26,13 +26,14 @@ export default async function PainelLayout({
 	if (!session) redirect("/entrar");
 
 	const access = await getAccess(db, session.user.id);
-	const [administradora, condos, cookieStore] = await Promise.all([
+	const [administradora, activePlan, condos, cookieStore] = await Promise.all([
 		access.administradoraId
 			? db.administradora.findUnique({
 					where: { id: access.administradoraId },
 					select: { name: true },
 				})
 			: null,
+		access.administradoraId ? getActivePlan(db, access.administradoraId) : null,
 		// Condominiums for the sidebar switcher: all of the administradora's,
 		// plus those where the user is síndico.
 		db.condominium.findMany({
@@ -56,6 +57,7 @@ export default async function PainelLayout({
 			userEmail={session.user.email}
 			contextName={administradora?.name ?? null}
 			isAdmin={Boolean(access.administradoraId)}
+			adminNeedsPlan={Boolean(access.administradoraId) && !activePlan}
 			isSindico={access.sindicoCondominiumIds.length > 0}
 			condos={condos}
 			lastCondoId={cookieStore.get(LAST_CONDO_COOKIE)?.value ?? null}

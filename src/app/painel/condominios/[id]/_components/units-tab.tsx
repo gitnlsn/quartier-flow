@@ -23,6 +23,7 @@ import {
 	scheduleLabel,
 } from "~/lib/billing-items";
 import { formatBRL, parseBRLToCents } from "~/lib/br";
+import { centsToMoneyInput } from "~/lib/masks";
 import { type RouterOutputs, api } from "~/trpc/react";
 import {
 	Badge,
@@ -33,6 +34,7 @@ import {
 	Field,
 	Input,
 	Loading,
+	MaskedInput,
 	Modal,
 	errorMessage,
 	fieldErrors,
@@ -126,7 +128,7 @@ function OverrideEditor({
 	const utils = api.useUtils();
 	const override = item.overrides.find((o) => o.unitId === unit.id);
 	const [value, setValue] = useState(
-		override ? (override.amountCents / 100).toFixed(2).replace(".", ",") : "",
+		override ? centsToMoneyInput(override.amountCents) : "",
 	);
 	const [invalid, setInvalid] = useState(false);
 	const save = api.billing.setOverride.useMutation({
@@ -160,11 +162,12 @@ function OverrideEditor({
 					label="Valor desta unidade (R$)"
 					hint="Vazio = usar o valor padrão."
 				>
-					<Input
+					<MaskedInput
+						mask="money"
 						className="w-40"
 						value={value}
-						placeholder={(item.amountCents / 100).toFixed(2).replace(".", ",")}
-						onChange={(e) => setValue(e.target.value)}
+						placeholder={centsToMoneyInput(item.amountCents)}
+						onValueChange={setValue}
 						autoFocus
 					/>
 				</Field>

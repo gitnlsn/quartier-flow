@@ -11,7 +11,10 @@ import { primaryButtonClass } from "../_components/auth-shell";
  * one-time token is only consumed when the person clicks the button. Email
  * security scanners that open links automatically don't use it up.
  */
-export function ConfirmSignIn({ token }: { token: string }) {
+export function ConfirmSignIn({
+	token,
+	next,
+}: { token: string; next: string }) {
 	const router = useRouter();
 	const [status, setStatus] = useState<"idle" | "verifying" | "error">("idle");
 
@@ -26,7 +29,7 @@ export function ConfirmSignIn({ token }: { token: string }) {
 			setStatus("error");
 			return;
 		}
-		router.replace("/conta");
+		router.replace(next);
 		router.refresh();
 	}
 

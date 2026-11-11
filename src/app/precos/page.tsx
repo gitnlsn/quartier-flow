@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
 	title: "Preços - Quartier Flow | Gestão de Condomínios",
 	description:
-		"Planos e preços do Quartier Flow. Early adopters ganham 50% de desconto nos primeiros 6 meses + 3 meses grátis. Cadastre-se na lista de espera.",
+		"Planos e preços do Quartier Flow: mensalidade por morador e síndico ativos, sem taxa de adesão. Early adopters têm acesso prioritário e treinamento personalizado.",
 	keywords: [
 		"preços gestão de condomínios",
 		"planos quartier flow",
@@ -91,8 +91,8 @@ export default function PrecosPage() {
 				<Section>
 					<Container size="lg" className="text-center">
 						<div className="mb-4 inline-flex items-center gap-2 border border-white bg-white px-4 py-2 font-bold text-black text-sm">
-							<span>🎁</span>
-							<span>EARLY ADOPTERS: 50% OFF + 3 MESES GRÁTIS</span>
+							<span>⚡</span>
+							<span>EARLY ADOPTERS: ACESSO PRIORITÁRIO</span>
 						</div>
 						<h1 className="mb-6 font-extrabold text-4xl leading-tight md:text-6xl lg:text-7xl">
 							Preços Transparentes
@@ -176,22 +176,6 @@ export default function PrecosPage() {
 
 						<div className="grid gap-6 md:grid-cols-2">
 							<Card className="p-6">
-								<div className="mb-4 text-4xl">💰</div>
-								<h3 className="mb-2 font-bold text-xl">50% de Desconto</h3>
-								<p className="text-gray-300 text-sm">
-									Nos primeiros 6 meses de assinatura após o lançamento
-								</p>
-							</Card>
-
-							<Card className="p-6">
-								<div className="mb-4 text-4xl">🎁</div>
-								<h3 className="mb-2 font-bold text-xl">3 Meses Grátis</h3>
-								<p className="text-gray-300 text-sm">
-									Período trial estendido para testar todas as funcionalidades
-								</p>
-							</Card>
-
-							<Card className="p-6">
 								<div className="mb-4 text-4xl">⚡</div>
 								<h3 className="mb-2 font-bold text-xl">Acesso Prioritário</h3>
 								<p className="text-gray-300 text-sm">
@@ -234,12 +218,13 @@ export default function PrecosPage() {
 
 							<div className="border border-gray-800 bg-black/50 p-6 backdrop-blur-sm">
 								<h3 className="mb-2 font-bold text-lg">
-									Como funciona o período grátis?
+									Existe período gratuito?
 								</h3>
 								<p className="text-gray-300 text-sm">
-									Early adopters ganham 3 meses grátis para testar a plataforma
-									completa sem compromisso. Após esse período, você decide se
-									quer continuar.
+									Não. A cobrança começa no mês da assinatura, proporcional aos
+									dias, e é calculada pelos moradores e síndicos ativos. Você
+									pode cancelar quando quiser; o cancelamento vale no fim do
+									mês.
 								</p>
 							</div>
 

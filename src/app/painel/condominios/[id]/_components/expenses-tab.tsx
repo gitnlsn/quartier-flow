@@ -21,6 +21,7 @@ import {
 	Field,
 	Input,
 	Loading,
+	MaskedInput,
 	Modal,
 	Select,
 	errorMessage,
@@ -197,11 +198,11 @@ function ExpenseForm({
 					/>
 				</Field>
 				<Field label="Valor (R$)" error={errors.amountCents}>
-					<Input
+					<MaskedInput
+						mask="money"
 						value={form.amount}
-						inputMode="decimal"
 						placeholder="350,00"
-						onChange={(e) => setForm({ ...form, amount: e.target.value })}
+						onValueChange={(amount) => setForm({ ...form, amount })}
 					/>
 				</Field>
 				<Field label="Data do pagamento" error={errors.paidAt}>

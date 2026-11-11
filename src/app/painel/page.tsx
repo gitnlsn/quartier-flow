@@ -6,6 +6,11 @@ import { api } from "~/trpc/react";
 import { AdminOverview } from "./_components/admin-overview";
 import { MyCharges } from "./_components/my-charges";
 import { Card, Loading, PageTitle } from "./_components/ui";
+import {
+	BecomeAdminCard,
+	FinishSignupCard,
+	Welcome,
+} from "./_components/welcome";
 
 /**
  * Home for every user. Administradora admins get the management overview;
@@ -14,7 +19,25 @@ import { Card, Loading, PageTitle } from "./_components/ui";
 export default function PainelHome() {
 	const access = api.portal.access.useQuery();
 	if (access.isLoading || !access.data) return <Loading />;
-	const { isAdmin, isSindico, isResident, firstName } = access.data;
+	const {
+		isAdmin,
+		isSindico,
+		isResident,
+		firstName,
+		email,
+		hasRole,
+		adminNeedsPlan,
+	} = access.data;
+
+	if (!hasRole) return <Welcome firstName={firstName} email={email} />;
+	if (adminNeedsPlan) {
+		return (
+			<div className="space-y-6">
+				<PageTitle title={firstName ? `Olá, ${firstName}!` : "Olá!"} />
+				<FinishSignupCard />
+			</div>
+		);
+	}
 
 	return (
 		<div className="space-y-8">
@@ -56,6 +79,8 @@ export default function PainelHome() {
 					</a>
 				</Card>
 			)}
+
+			{!isAdmin && <BecomeAdminCard />}
 		</div>
 	);
 }

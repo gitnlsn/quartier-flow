@@ -2,7 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { isValidCnpj, isValidCpf, maskCpf, onlyDigits } from "~/lib/br";
-import { assertCanViewCondominium, getAccess } from "~/server/access";
+import {
+	assertActivePlan,
+	assertCanViewCondominium,
+	getAccess,
+} from "~/server/access";
 import {
 	adminProcedure,
 	createTRPCRouter,
@@ -148,6 +152,7 @@ export const condominiumRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
+			await assertActivePlan(ctx.db, ctx.administradoraId);
 			const condo = await ctx.db.condominium.create({
 				data: { ...input, administradoraId: ctx.administradoraId },
 			});
@@ -238,6 +243,7 @@ export const condominiumRouter = createTRPCRouter({
 				}),
 		)
 		.mutation(async ({ ctx, input }) => {
+			await assertActivePlan(ctx.db, ctx.administradoraId);
 			const condo = await assertCondominium(
 				ctx.db,
 				ctx.administradoraId,
@@ -295,6 +301,7 @@ export const condominiumRouter = createTRPCRouter({
 	importPeople: adminProcedure
 		.input(importInput.extend({ sendInvites: z.boolean() }))
 		.mutation(async ({ ctx, input }) => {
+			await assertActivePlan(ctx.db, ctx.administradoraId);
 			const condo = await assertCondominium(
 				ctx.db,
 				ctx.administradoraId,

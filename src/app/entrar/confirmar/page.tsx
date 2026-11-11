@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { safeNextPath } from "~/lib/next-path";
 import { AuthShell, primaryButtonClass } from "../_components/auth-shell";
 import { ConfirmSignIn } from "./confirm-sign-in";
 
@@ -13,14 +14,14 @@ export const metadata: Metadata = {
 export default async function ConfirmarPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ token?: string }>;
+	searchParams: Promise<{ token?: string; next?: string }>;
 }) {
-	const { token } = await searchParams;
+	const { token, next } = await searchParams;
 
 	return (
 		<AuthShell title="Confirmar acesso">
 			{token ? (
-				<ConfirmSignIn token={token} />
+				<ConfirmSignIn token={token} next={safeNextPath(next) ?? "/painel"} />
 			) : (
 				<div className="space-y-4">
 					<p>Link de acesso inválido.</p>

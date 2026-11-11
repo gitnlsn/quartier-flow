@@ -13,6 +13,7 @@ import {
 	ErrorMessage,
 	Field,
 	Input,
+	MaskedInput,
 	Modal,
 	Select,
 	errorMessage,
@@ -167,10 +168,11 @@ export function InviteForm({
 							hint="Obrigatório para quem paga a unidade (exigido para emitir boletos)."
 							error={errors.cpf}
 						>
-							<Input
+							<MaskedInput
+								mask="cpf"
 								value={form.cpf}
-								inputMode="numeric"
-								onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+								placeholder="000.000.000-00"
+								onValueChange={(cpf) => setForm({ ...form, cpf })}
 							/>
 						</Field>
 					</>

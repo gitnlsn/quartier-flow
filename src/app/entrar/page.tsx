@@ -27,11 +27,18 @@ export default async function EntrarPage({
 					role="alert"
 					className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive text-sm"
 				>
-					Não foi possível entrar com essa conta Google. O acesso é só para
-					moradores e síndicos convidados: use o mesmo email do convite.
+					Não foi possível entrar com essa conta Google. Tente de novo ou receba
+					um link de acesso por email.
 				</p>
 			)}
 			<SignInForm />
+			<p className="mt-6 text-muted-foreground text-sm">
+				Primeiro acesso? Entre com Google ou pelo link: sua conta é criada na
+				hora.{" "}
+				<a href="/cadastro" className="underline underline-offset-4">
+					Quero cadastrar minha administradora
+				</a>
+			</p>
 		</AuthShell>
 	);
 }

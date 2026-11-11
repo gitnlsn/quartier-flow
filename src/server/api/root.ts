@@ -4,8 +4,8 @@ import { condominiumRouter } from "~/server/api/routers/condominium";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { helloRouter } from "~/server/api/routers/hello";
 import { newsletterRouter } from "~/server/api/routers/newsletter";
+import { onboardingRouter } from "~/server/api/routers/onboarding";
 import { portalRouter } from "~/server/api/routers/portal";
-import { signupRouter } from "~/server/api/routers/signup";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -16,7 +16,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
 	hello: helloRouter,
 	newsletter: newsletterRouter,
-	signup: signupRouter,
+	onboarding: onboardingRouter,
 	portal: portalRouter,
 	administradora: administradoraRouter,
 	condominium: condominiumRouter,

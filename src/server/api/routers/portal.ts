@@ -1,4 +1,4 @@
-import { getAccess } from "~/server/access";
+import { getAccess, getActivePlan } from "~/server/access";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 /** Features shared by every signed-in user (resident, síndico, administradora). */
@@ -6,11 +6,20 @@ export const portalRouter = createTRPCRouter({
 	/** Roles that decide which sections the user sees. */
 	access: protectedProcedure.query(async ({ ctx }) => {
 		const access = await getAccess(ctx.db, ctx.session.user.id);
+		const isAdmin = Boolean(access.administradoraId);
+		const isSindico = access.sindicoCondominiumIds.length > 0;
 		return {
 			firstName: ctx.session.user.name?.split(" ")[0] ?? "",
-			isAdmin: Boolean(access.administradoraId),
-			isSindico: access.sindicoCondominiumIds.length > 0,
+			email: ctx.session.user.email,
+			isAdmin,
+			isSindico,
 			isResident: access.isResident,
+			/** No role yet: a new account (open sign-up) gets the welcome page. */
+			hasRole: isAdmin || isSindico || access.isResident,
+			/** Registered an administradora but hasn't signed a plan yet. */
+			adminNeedsPlan: access.administradoraId
+				? !(await getActivePlan(ctx.db, access.administradoraId))
+				: false,
 		};
 	}),
 

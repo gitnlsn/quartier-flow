@@ -31,12 +31,6 @@ export function StructuredData() {
 		name: "Quartier Flow",
 		applicationCategory: "BusinessApplication",
 		operatingSystem: "Web, iOS, Android",
-		offers: {
-			"@type": "Offer",
-			price: "0",
-			priceCurrency: "BRL",
-			description: "3 meses grátis para early adopters",
-		},
 		description:
 			"Plataforma SaaS para gestão de condomínios com sistema de pagamentos, autenticação two-factor, controle de inadimplência, comunicação com moradores e automação de processos.",
 		featureList: [
@@ -76,7 +70,7 @@ export function StructuredData() {
 				name: "Quais benefícios ganho ao me cadastrar agora?",
 				acceptedAnswer: {
 					"@type": "Answer",
-					text: "Early adopters ganham: 50% de desconto nos primeiros 6 meses, 3 meses grátis de trial, acesso prioritário ao beta, treinamento personalizado e influência direta no desenvolvimento do produto.",
+					text: "Early adopters ganham acesso prioritário ao beta, treinamento personalizado e influência direta no desenvolvimento do produto.",
 				},
 			},
 			{

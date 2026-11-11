@@ -61,3 +61,26 @@ export async function assertCanViewCondominium(
 	}
 	return { canManage };
 }
+
+/** The administradora's current plan (null until it signs one in onboarding). */
+export function getActivePlan(db: typeof Db, administradoraId: string) {
+	return db.administradoraPlan.findFirst({
+		where: { administradoraId, endedAt: null },
+		include: { plan: true },
+		orderBy: { startedAt: "desc" },
+	});
+}
+
+/** Management actions need a signed plan (docs/features/19 onboarding). */
+export async function assertActivePlan(
+	db: typeof Db,
+	administradoraId: string,
+) {
+	if (!(await getActivePlan(db, administradoraId))) {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message:
+				"Assine um plano para começar a usar a gestão. Conclua o cadastro em Início.",
+		});
+	}
+}

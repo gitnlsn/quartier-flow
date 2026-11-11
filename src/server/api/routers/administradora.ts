@@ -3,12 +3,18 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { onlyDigits } from "~/lib/br";
+import { assertActivePlan } from "~/server/access";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import {
+	type PendingDocuments,
+	approveSandboxSubaccount,
+	asaasLoginUrl,
 	createSubaccount,
 	findSubaccountByCpfCnpj,
 	getAccountStatus,
+	getCommercialInfo,
 	getPendingDocuments,
+	isAsaasSandbox,
 	subaccountApiKey,
 	toKycStatus,
 } from "~/server/asaas/accounts";
@@ -39,7 +45,9 @@ export async function countSeats(db: typeof Db, administradoraId: string) {
 }
 
 const companySchema = z.object({
-	companyType: z.enum(["LIMITED", "ASSOCIATION", "MEI", "INDIVIDUAL"]),
+	companyType: z.enum(["LIMITED", "ASSOCIATION", "MEI", "INDIVIDUAL"], {
+		errorMap: () => ({ message: "Selecione o tipo de empresa" }),
+	}),
 	mobilePhone: z
 		.string()
 		.transform(onlyDigits)
@@ -83,6 +91,8 @@ export const administradoraRouter = createTRPCRouter({
 			plan,
 			seats,
 			estimatedMonthlyCents,
+			asaasLoginUrl: asaasLoginUrl(),
+			asaasSandbox: isAsaasSandbox(),
 			companyComplete: Boolean(
 				administradora.companyType &&
 					administradora.mobilePhone &&
@@ -130,9 +140,14 @@ export const administradoraRouter = createTRPCRouter({
 		}),
 	),
 
+	/**
+	 * Switches the signed plan (/painel/plano). The first plan is only started
+	 * by onboarding.signPlan, together with the Termos de Uso acceptance.
+	 */
 	choosePlan: adminProcedure
 		.input(z.object({ planId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
+			await assertActivePlan(ctx.db, ctx.administradoraId);
 			const plan = await ctx.db.plan.findFirst({
 				where: { id: input.planId, active: true },
 			});
@@ -243,10 +258,33 @@ export const administradoraRouter = createTRPCRouter({
 		}
 		const apiKey = decryptSecret(payout.apiKeyEncrypted);
 		try {
-			const [status, documents] = await Promise.all([
+			const [status, documents, company] = await Promise.all([
 				getAccountStatus(apiKey),
-				getPendingDocuments(apiKey).catch(() => ({ data: [] })),
+				getPendingDocuments(apiKey).catch(
+					(): PendingDocuments => ({ data: [] }),
+				),
+				getCommercialInfo(apiKey).catch(() => null),
 			]);
+			// After the account exists, the company data is edited in Asaas:
+			// keep our copy in sync so the form shows what Asaas has.
+			if (company) {
+				await ctx.db.administradora.update({
+					where: { id: ctx.administradoraId },
+					data: {
+						companyType: company.companyType ?? undefined,
+						mobilePhone: company.mobilePhone ?? undefined,
+						incomeValue:
+							company.incomeValue != null
+								? Math.round(company.incomeValue)
+								: undefined,
+						postalCode: company.postalCode ?? undefined,
+						address: company.address ?? undefined,
+						addressNumber: company.addressNumber ?? undefined,
+						complement: company.complement,
+						province: company.province ?? undefined,
+					},
+				});
+			}
 			const onboardingUrl =
 				documents.data.find((d) => d.onboardingUrl)?.onboardingUrl ?? null;
 			const updated = await ctx.db.payoutAccount.update({
@@ -263,7 +301,19 @@ export const administradoraRouter = createTRPCRouter({
 						id: d.id,
 						title: d.title ?? d.type,
 						status: d.status,
+						responsible: d.responsible?.name ?? null,
+						onboardingUrl: d.onboardingUrl ?? null,
+						expiresAt: d.onboardingUrlExpirationDate ?? null,
 					})),
+				rejectReasons: documents.rejectReasons ?? null,
+				asaasLoginUrl: asaasLoginUrl(),
+				sandbox: isAsaasSandbox(),
+				accountEmail: (
+					await ctx.db.administradora.findUniqueOrThrow({
+						where: { id: ctx.administradoraId },
+						select: { email: true },
+					})
+				).email,
 			};
 		} catch (error) {
 			if (error instanceof AsaasError) {
@@ -274,5 +324,47 @@ export const administradoraRouter = createTRPCRouter({
 			}
 			throw error;
 		}
+	}),
+	/**
+	 * Sandbox only: approves the receiving account in Asaas, since the
+	 * Sandbox can't review real documents. Refused against production.
+	 */
+	approveSandboxAccount: adminProcedure.mutation(async ({ ctx }) => {
+		if (!isAsaasSandbox()) {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Disponível apenas no ambiente de testes do Asaas.",
+			});
+		}
+		const payout = await ctx.db.payoutAccount.findUnique({
+			where: { administradoraId: ctx.administradoraId },
+		});
+		if (!payout) throw new TRPCError({ code: "NOT_FOUND" });
+		if (!payout.apiKeyEncrypted) {
+			throw new TRPCError({
+				code: "BAD_REQUEST",
+				message:
+					"Esta conta foi conectada sem a chave da subconta. Aprove-a pelo painel do Sandbox do Asaas.",
+			});
+		}
+		try {
+			await approveSandboxSubaccount(decryptSecret(payout.apiKeyEncrypted));
+		} catch (error) {
+			if (error instanceof AsaasError) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: error.userMessage,
+				});
+			}
+			throw error;
+		}
+		await audit({
+			administradoraId: ctx.administradoraId,
+			actorUserId: ctx.session.user.id,
+			action: "payout.sandbox_approve",
+			entity: "payoutAccount",
+			entityId: payout.id,
+		});
+		return { ok: true };
 	}),
 });

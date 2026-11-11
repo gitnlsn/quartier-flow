@@ -1,17 +1,6 @@
 export function EarlyAccess() {
 	const benefits = [
 		{
-			icon: "💰",
-			title: "Desconto Exclusivo",
-			description: "50% OFF nos primeiros 6 meses de assinatura",
-		},
-		{
-			icon: "🎁",
-			title: "3 Meses Grátis",
-			description:
-				"Período trial estendido para testar todas as funcionalidades",
-		},
-		{
 			icon: "⚡",
 			title: "Acesso Prioritário",
 			description: "Seja um dos primeiros a usar a plataforma quando lançarmos",
@@ -87,7 +76,7 @@ export function EarlyAccess() {
 					</p>
 
 					{/* Benefits Grid */}
-					<div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-6 lg:grid-cols-4">
+					<div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-6">
 						{benefits.map((benefit, index) => (
 							<div
 								key={index}

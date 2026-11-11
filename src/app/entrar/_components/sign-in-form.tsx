@@ -7,7 +7,19 @@ import { primaryButtonClass, secondaryButtonClass } from "./auth-shell";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
-export function SignInForm() {
+/**
+ * Google or email link. Both create the account on first use (open sign-up);
+ * `callbackURL` is where the person lands afterwards.
+ */
+export function SignInForm({
+	callbackURL = "/painel",
+	googleLabel = "Entrar com Google",
+	submitLabel = "Receber link de acesso",
+}: {
+	callbackURL?: string;
+	googleLabel?: string;
+	submitLabel?: string;
+}) {
 	const [email, setEmail] = useState("");
 	const [status, setStatus] = useState<Status>("idle");
 	const [googlePending, setGooglePending] = useState(false);
@@ -16,8 +28,7 @@ export function SignInForm() {
 		setGooglePending(true);
 		const { error } = await authClient.signIn.social({
 			provider: "google",
-			callbackURL: "/conta",
-			// Includes "not invited" (sign-up disabled); /entrar shows a message.
+			callbackURL,
 			errorCallbackURL: "/entrar?erro=google",
 		});
 		if (error) setGooglePending(false);
@@ -28,6 +39,7 @@ export function SignInForm() {
 		setStatus("sending");
 		const { error } = await authClient.signIn.magicLink({
 			email: email.trim().toLowerCase(),
+			callbackURL,
 		});
 		setStatus(error ? "error" : "sent");
 	}
@@ -36,8 +48,8 @@ export function SignInForm() {
 		return (
 			<div aria-live="polite" className="space-y-4">
 				<p>
-					Se <strong>{email}</strong> estiver cadastrado, você vai receber um
-					link de acesso em instantes.
+					Enviamos um link de acesso para <strong>{email}</strong>. Se for seu
+					primeiro acesso, o link também cria sua conta.
 				</p>
 				<p className="text-muted-foreground text-sm">
 					O link expira em 15 minutos. Confira também a caixa de spam.
@@ -61,7 +73,7 @@ export function SignInForm() {
 				disabled={googlePending}
 				className={secondaryButtonClass}
 			>
-				{googlePending ? "Abrindo o Google..." : "Entrar com Google"}
+				{googlePending ? "Abrindo o Google..." : googleLabel}
 			</button>
 
 			<div className="flex items-center gap-3 text-muted-foreground text-sm">
@@ -75,6 +87,7 @@ export function SignInForm() {
 				onEmailChange={setEmail}
 				status={status}
 				onSubmit={handleSubmit}
+				submitLabel={submitLabel}
 			/>
 		</div>
 	);
@@ -85,11 +98,13 @@ function EmailLinkForm({
 	onEmailChange,
 	status,
 	onSubmit,
+	submitLabel,
 }: {
 	email: string;
 	onEmailChange: (email: string) => void;
 	status: Status;
 	onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+	submitLabel: string;
 }) {
 	return (
 		<form onSubmit={onSubmit} className="space-y-4">
@@ -117,7 +132,7 @@ function EmailLinkForm({
 				disabled={status === "sending"}
 				className={primaryButtonClass}
 			>
-				{status === "sending" ? "Enviando..." : "Receber link de acesso"}
+				{status === "sending" ? "Enviando..." : submitLabel}
 			</button>
 		</form>
 	);

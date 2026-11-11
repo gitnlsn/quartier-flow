@@ -8,18 +8,20 @@ import { headers } from "next/headers";
 import { cache } from "react";
 
 import { env } from "~/env";
+import { safeNextPath } from "~/lib/next-path";
 import { db } from "~/server/db";
 import { deliver, sendEmail } from "./messaging";
 
 const MAGIC_LINK_TTL_SECONDS = 15 * 60;
 
 /**
- * Passwordless, invitation-only authentication.
+ * Passwordless authentication, open to everyone (docs/features/01).
  *
  * - Users sign in with a one-time link sent to their email, or with Google.
  *   No passwords. (Google sign-in does not work inside the Android WebView.)
- * - Sign-up is disabled: accounts are created by an invitation (síndico /
- *   administradora), never by the person requesting a link.
+ * - Sign-up is open: the first sign-in creates the account. A new account has
+ *   no role; /painel welcomes it and offers the administradora onboarding
+ *   (/painel/comecar). Residents and síndicos still get access by invitation.
  * - Account recovery = an authorized person updates the email, which must also
  *   revoke all sessions of that user (see docs/features/01).
  */
@@ -33,8 +35,8 @@ export const auth = betterAuth({
 		google: {
 			clientId: env.AUTH_GOOGLE_ID,
 			clientSecret: env.AUTH_GOOGLE_SECRET,
-			// Invitation-only: Google can sign in existing users, never create them.
-			disableSignUp: true,
+			// Open sign-up: a new Google account creates a user (no role yet).
+			disableSignUp: false,
 			prompt: "select_account",
 		},
 	},
@@ -66,30 +68,37 @@ export const auth = betterAuth({
 
 	plugins: [
 		magicLink({
-			disableSignUp: true,
+			disableSignUp: false,
 			expiresIn: MAGIC_LINK_TTL_SECONDS,
 			storeToken: "hashed",
-			async sendMagicLink({ email, token }) {
-				// Only registered users get an email. The endpoint answers the same
-				// way either way, so this doesn't reveal which emails exist.
-				const user = await db.user.findUnique({
+			async sendMagicLink({ email, token, url: verifyUrl }) {
+				// Open sign-up: any email gets a link; verifying it creates the
+				// account when needed. Rate limits (below) curb abuse.
+				const existing = await db.user.findUnique({
 					where: { email: email.toLowerCase() },
 					select: { id: true },
 				});
-				if (!user) return;
 
 				// Link to our own confirmation page instead of the verify endpoint:
 				// email scanners that pre-open links would otherwise consume the
 				// one-time token before the person clicks it.
 				const url = new URL("/entrar/confirmar", env.BETTER_AUTH_URL);
 				url.searchParams.set("token", token);
+				const next = safeNextPath(
+					new URL(verifyUrl).searchParams.get("callbackURL"),
+				);
+				if (next) url.searchParams.set("next", next);
 
 				deliver(
 					sendEmail({
 						to: email,
-						subject: "Seu link de acesso ao Quartier Flow",
+						subject: existing
+							? "Seu link de acesso ao Quartier Flow"
+							: "Crie sua conta no Quartier Flow",
 						text: [
-							"Olá! Clique no link abaixo para entrar no Quartier Flow:",
+							existing
+								? "Olá! Clique no link abaixo para entrar no Quartier Flow:"
+								: "Olá! Clique no link abaixo para criar sua conta no Quartier Flow:",
 							"",
 							url.toString(),
 							"",

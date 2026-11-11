@@ -358,6 +358,25 @@ model WebhookEvent {
   @@index([status])
 }
 
+/**
+ * Legal record of a Termos de Uso acceptance (docs/features/19). Append-only and
+ * without foreign keys, like AuditLog: deleting a user or administradora must
+ * not erase the evidence of what was accepted, when and from where.
+ */
+model TermsAcceptance {
+  id               String   @id @default(cuid())
+  userId           String
+  administradoraId String?
+  planId           String? // plan signed together with the terms
+  termsVersion     String // src/lib/terms.ts TERMS_VERSION
+  ipAddress        String?
+  userAgent        String?
+  acceptedAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([administradoraId])
+}
+
 model AuditLog {
   id               String   @id @default(cuid())
   administradoraId String?

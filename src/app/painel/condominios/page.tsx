@@ -14,6 +14,7 @@ import {
 	Field,
 	Input,
 	Loading,
+	MaskedInput,
 	PageTitle,
 	errorMessage,
 	fieldErrors,
@@ -46,10 +47,11 @@ function NewCondominiumForm({ onDone }: { onDone: () => void }) {
 					/>
 				</Field>
 				<Field label="CNPJ (opcional)" error={errors.cnpj}>
-					<Input
+					<MaskedInput
+						mask="cnpj"
 						value={form.cnpj}
-						inputMode="numeric"
-						onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+						placeholder="00.000.000/0000-00"
+						onValueChange={(cnpj) => setForm({ ...form, cnpj })}
 					/>
 				</Field>
 				<Field label="Endereço (opcional)" error={errors.address}>

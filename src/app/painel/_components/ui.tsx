@@ -41,6 +41,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input as UiInput } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
+import { type MaskName, masks } from "~/lib/masks";
 
 /**
  * App-area primitives (light theme, shadcn/ui). Pages use these instead of
@@ -127,7 +128,7 @@ export function Field({
 	children,
 }: {
 	label: string;
-	hint?: string;
+	hint?: ReactNode;
 	error?: string;
 	children: ReactNode;
 }) {
@@ -151,6 +152,49 @@ export function Field({
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
 	return (
 		<UiInput {...props} className={cn("h-11 text-base", props.className)} />
+	);
+}
+
+/**
+ * Input that formats as the person types (CPF, CNPJ, CEP, phone, money...).
+ * Keeps the caret after the same digit, so editing in the middle works.
+ */
+export function MaskedInput({
+	mask,
+	value,
+	onValueChange,
+	...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & {
+	mask: MaskName;
+	value: string;
+	onValueChange: (value: string) => void;
+}) {
+	return (
+		<Input
+			inputMode="numeric"
+			{...props}
+			value={value}
+			onChange={(e) => {
+				const el = e.target;
+				const raw = el.value;
+				const formatted = masks[mask](raw);
+				onValueChange(formatted);
+				if (mask === "money") return; // fills from the right: caret stays at the end
+				const caret = el.selectionStart ?? raw.length;
+				const digitsBefore = raw.slice(0, caret).replace(/\D/g, "").length;
+				let pos = 0;
+				for (
+					let seen = 0;
+					pos < formatted.length && seen < digitsBefore;
+					pos++
+				) {
+					if (/\d/.test(formatted[pos] ?? "")) seen++;
+				}
+				requestAnimationFrame(() => {
+					if (document.activeElement === el) el.setSelectionRange(pos, pos);
+				});
+			}}
+		/>
 	);
 }
 
@@ -304,9 +348,32 @@ export function errorMessage(error: unknown): string | null {
 	if (Object.keys(fieldErrors(error)).length > 0) {
 		return "Revise os campos destacados.";
 	}
-	const message = (error as { message?: string }).message;
-	return message && !message.startsWith("[") ? message : "Algo deu errado.";
+	const { message, data } = error as {
+		message?: string;
+		data?: { code?: string };
+	};
+	// Errors thrown without a message carry only the code (e.g. "NOT_FOUND").
+	if (!message || message === data?.code || /^[A-Z_]+$/.test(message)) {
+		return (
+			ERROR_CODE_MESSAGE[data?.code ?? message ?? ""] ?? "Algo deu errado."
+		);
+	}
+	if (/failed to fetch|fetch failed|networkerror|load failed/i.test(message)) {
+		return "Sem conexão com o servidor. Verifique sua internet e tente novamente.";
+	}
+	return message.startsWith("[") ? "Algo deu errado." : message;
 }
+
+const ERROR_CODE_MESSAGE: Record<string, string> = {
+	UNAUTHORIZED: "Sua sessão expirou. Entre novamente.",
+	FORBIDDEN: "Você não tem permissão para fazer isso.",
+	NOT_FOUND: "Não encontramos o que você procurava. Recarregue a página.",
+	CONFLICT: "Este registro já existe ou foi alterado. Recarregue a página.",
+	BAD_REQUEST: "Revise os dados e tente novamente.",
+	TOO_MANY_REQUESTS: "Muitas tentativas. Aguarde um pouco e tente novamente.",
+	TIMEOUT: "O servidor demorou para responder. Tente novamente.",
+	INTERNAL_SERVER_ERROR: "Algo deu errado do nosso lado. Tente novamente.",
+};
 
 export const KYC_LABEL: Record<string, string> = {
 	pending: "Pendente",
@@ -406,5 +473,32 @@ export function Modal({
 				<div className="p-5">{children}</div>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+/** Numbered step heading; turns into a check mark when done. */
+export function StepTitle({
+	n,
+	title,
+	done,
+}: {
+	n: number;
+	title: string;
+	done: boolean;
+}) {
+	return (
+		<span className="flex items-center gap-3">
+			<span
+				className={cn(
+					"flex size-8 shrink-0 items-center justify-center rounded-full border font-semibold text-sm",
+					done
+						? "border-transparent bg-success text-white"
+						: "border-border bg-muted",
+				)}
+			>
+				{done ? "✓" : n}
+			</span>
+			{title}
+		</span>
 	);
 }

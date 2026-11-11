@@ -94,13 +94,23 @@ model PlatformInvoice {
 }
 ```
 
+## Decided (Nov/2026)
+- **No free period:** billing starts in the month the plan is signed.
+- **Calendar month:** invoice on the 1st for the previous month, by residents and
+  síndicos active on its last day; **first invoice prorated** by days since signing.
+  Sent by email with boleto/Pix, **due on the 10th**. Plan changes apply from the next
+  invoice. Overdue: manager area may be restricted, residents never.
+- **Cancellation:** any time via the contact channels (Termos 14), effective at month end.
+- Stated in Termos de Uso 8.1–8.3 (`src/lib/terms.ts`) and shown before signing
+  (`src/lib/onboarding.ts`). Text to be reviewed by a lawyer.
+
 ## Open questions
 - Prices, seat rule and add-on scope (requirements 1–3, 6).
-- Free trial? (Asaas evaluation-period limits in 17.)
 - Do we also take a fee on resident payments, or is seat + add-on pricing our only
   revenue? (Today: split sends 100% of net to the administradora, which pays the Asaas
   fees, see 17.)
 
 ## Implementation (slice 1)
 - `Plan` catalog seeded by `scripts/seed-plans.ts` (**placeholder prices**), `AdministradoraPlan`; plan choice in onboarding and `/painel/plano` with seat count and monthly estimate.
-- Not yet: add-ons, monthly invoice to the administradora, overdue handling.
+- Plan signing with Termos de Uso acceptance in the onboarding (19); `/painel/plano` only switches plans (confirmation dialog).
+- Not yet: add-ons, monthly invoice to the administradora, overdue handling, self-service cancellation.

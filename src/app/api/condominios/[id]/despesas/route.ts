@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { z } from "zod";
 
+import "~/lib/zod-pt";
+
 import {
 	ATTACHMENT_EXTENSION,
 	EXPENSE_CATEGORIES,

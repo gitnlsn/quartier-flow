@@ -50,6 +50,10 @@ its payment-account KYC, and see its Quartier Flow bill.
 
 ## Implementation (slice 1)
 - **One area for every user** at `/painel` (`AppShell`): residents (Minhas cobranças), síndicos (read-only condominiums), administradora admins (everything residents/síndicos see in their condominiums + management).
-- Self-signup at `/cadastro` (CNPJ validated, rate-limited) → sign-in link → onboarding wizard `/painel/onboarding` (company data → plan → Asaas account/KYC).
+- **Becoming an administradora (Nov/2026):** open sign-up (01) at `/cadastro` or `/entrar` → accounts with no role see a welcome page (`/painel`) → wizard `/painel/comecar`:
+  1. name, 2. razão social + CNPJ (creates the administradora), 3. plan (per-seat example), 4. review: summary, full **Termos de Uso** (`src/lib/terms.ts`, versioned), billing rules, "what happens next", three required confirmations → **Assinar plano**.
+  Signing records a `TermsAcceptance` (version, IP, user agent; append-only, no FKs), starts the `AdministradoraPlan`, audits `plan.sign` and emails a summary. The confirmation page and email list the same next steps (`src/lib/onboarding.ts`).
+- Until a plan is signed: Plano and Conta de recebimento redirect to `/painel/comecar`; creating condominiums, inviting and importing people are refused (`assertActivePlan`); the sidebar shows only "Concluir cadastro".
+- After signing: `/painel/onboarding` (company data → Asaas account/KYC); plan shown read-only there.
 - Light shadcn/ui theme scoped to the app area (see CLAUDE.md "App area design system").
 - Not yet: multiple admin users per administradora, email change with session revocation, audit log screen.

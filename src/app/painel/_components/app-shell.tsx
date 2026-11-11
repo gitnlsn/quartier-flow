@@ -5,6 +5,7 @@ import {
 	Building2,
 	Check,
 	ChevronsUpDown,
+	ClipboardCheck,
 	CreditCard,
 	Home,
 	Landmark,
@@ -55,7 +56,11 @@ type CondoOption = { id: string; name: string };
  * grouped by area (docs/features/20); then the personal area and, for
  * administradora admins, the company-level pages.
  */
-function buildGroups(isAdmin: boolean, condoId: string | null): NavGroup[] {
+function buildGroups(
+	isAdmin: boolean,
+	adminNeedsPlan: boolean,
+	condoId: string | null,
+): NavGroup[] {
 	const groups: NavGroup[] = [];
 	if (condoId) {
 		groups.push(
@@ -112,7 +117,19 @@ function buildGroups(isAdmin: boolean, condoId: string | null): NavGroup[] {
 			},
 		],
 	});
-	if (isAdmin) {
+	if (isAdmin && adminNeedsPlan) {
+		// Registered an administradora but hasn't signed a plan yet.
+		groups.push({
+			title: "Administradora",
+			items: [
+				{
+					href: "/painel/comecar",
+					label: "Concluir cadastro",
+					icon: <ClipboardCheck />,
+				},
+			],
+		});
+	} else if (isAdmin) {
 		groups.push({
 			title: "Administradora",
 			items: [
@@ -313,6 +330,7 @@ export function AppShell({
 	userEmail,
 	contextName,
 	isAdmin,
+	adminNeedsPlan,
 	isSindico,
 	condos,
 	lastCondoId,
@@ -322,6 +340,7 @@ export function AppShell({
 	userEmail: string;
 	contextName: string | null;
 	isAdmin: boolean;
+	adminNeedsPlan: boolean;
 	isSindico: boolean;
 	condos: CondoOption[];
 	lastCondoId: string | null;
@@ -337,7 +356,11 @@ export function AppShell({
 		known(fromUrl) ?? known(lastCondoId) ?? condos[0]?.id ?? null;
 	const hasCondos = (isAdmin || isSindico) && condos.length > 0;
 
-	const groups = buildGroups(isAdmin, hasCondos ? activeCondoId : null);
+	const groups = buildGroups(
+		isAdmin,
+		adminNeedsPlan,
+		hasCondos ? activeCondoId : null,
+	);
 	const switcher = hasCondos ? (
 		<CondoSwitcher
 			condos={condos}

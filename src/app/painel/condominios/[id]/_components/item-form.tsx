@@ -4,11 +4,13 @@ import { type FormEvent, useState } from "react";
 
 import type { Recurrence } from "~/lib/billing-items";
 import { parseBRLToCents } from "~/lib/br";
+import { centsToMoneyInput } from "~/lib/masks";
 import {
 	Button,
 	ErrorMessage,
 	Field,
 	Input,
+	MaskedInput,
 	Select,
 	errorMessage,
 	fieldErrors,
@@ -27,8 +29,6 @@ export const currentPeriod = () => {
 	const now = new Date();
 	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 };
-
-const toInput = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 
 /** Form for a billing item (shared or individual): name, amount and schedule. */
 export function ItemForm({
@@ -50,7 +50,7 @@ export function ItemForm({
 	const [form, setForm] = useState({
 		name: initial?.name ?? "",
 		description: initial?.description ?? "",
-		amount: initial?.amountCents ? toInput(initial.amountCents) : "",
+		amount: initial?.amountCents ? centsToMoneyInput(initial.amountCents) : "",
 		recurrence: (initial?.recurrence ?? "monthly") as Recurrence,
 		startPeriod: initial?.startPeriod ?? currentPeriod(),
 		installments: String(initial?.installments ?? 6),
@@ -93,11 +93,11 @@ export function ItemForm({
 					/>
 				</Field>
 				<Field label="Valor (R$)" error={amountError ?? key("amountCents")}>
-					<Input
+					<MaskedInput
+						mask="money"
 						value={form.amount}
-						inputMode="decimal"
 						placeholder="850,00"
-						onChange={(e) => setForm({ ...form, amount: e.target.value })}
+						onValueChange={(amount) => setForm({ ...form, amount })}
 					/>
 				</Field>
 				<div className="md:col-span-2">

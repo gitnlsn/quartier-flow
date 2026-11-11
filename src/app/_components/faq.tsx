@@ -21,7 +21,7 @@ const faqs: FAQItem[] = [
 	{
 		question: "Quais benefícios ganho ao me cadastrar agora?",
 		answer:
-			"Early adopters ganham: 50% de desconto nos primeiros 6 meses, 3 meses grátis de trial, acesso prioritário ao beta, treinamento personalizado e influência direta no desenvolvimento do produto.",
+			"Early adopters ganham acesso prioritário ao beta, treinamento personalizado e influência direta no desenvolvimento do produto.",
 	},
 	{
 		question: "Qual será o preço da plataforma?",
