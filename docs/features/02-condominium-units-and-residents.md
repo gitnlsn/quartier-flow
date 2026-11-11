@@ -26,11 +26,23 @@ the people linked to each unit, and their pets and vehicles.
 4. Pets (name, species, photo) and vehicles (plate, model, color) per unit.
 5. A user can belong to several condominiums and switch context.
 6. Move-out flow: end a membership without deleting history.
+7. **Administradora is the top-level tenant** (our paying customer, 18): it owns many
+   condominiums. Its Asaas receiving account and KYC are handled in 17/19; no
+   condominium can issue charges until that account is approved.
 
 ## Data model (draft)
 ```prisma
-model Condominium {
+model Administradora {
   id        String   @id @default(cuid())
+  name      String
+  cnpj      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Condominium {
+  id               String   @id @default(cuid())
+  administradoraId String
   name      String
   cnpj      String?  @unique
   address   String

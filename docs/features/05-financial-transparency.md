@@ -1,6 +1,6 @@
 # 05 — Financial Transparency & Dashboard
 
-**Status:** Proposed · **Phase:** MVP · **Depends on:** 03
+**Status:** Proposed · **Phase:** MVP · **Depends on:** 03, 17
 
 ## Summary
 Give the síndico a real-time view of the condominium's finances and give residents
@@ -18,7 +18,11 @@ access to the monthly balance sheet (balancete) and their own charge history.
 
 ## Functional requirements
 1. Expense entries with category, supplier, date, amount and attachment.
-2. Income comes automatically from payments (03).
+2. Income comes automatically from payments (03): recorded on Asaas
+   `PAYMENT_RECEIVED`, with the gross amount, Asaas fees and the net amount split to
+   the administradora (17). Our ledger attributes every payment to its condominium,
+   because the administradora's Asaas account receives money from all its
+   condominiums.
 3. Dashboard: monthly income vs. expenses, balance, delinquency rate, top categories.
 4. Monthly balancete: generated from entries, reviewed and **published** by the síndico.
 5. Residents only see published balancetes, never drafts.

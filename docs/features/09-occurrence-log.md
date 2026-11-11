@@ -22,7 +22,8 @@ Different from 08: an occurrence is about conduct or events, not repairs.
 1. Occurrence: type, date/time, description, optional photos, optional involved unit.
 2. Visibility: private between author and management (never public).
 3. Síndico response with outcome: no action, warning, fine.
-4. A fine creates a `Charge` (03) of type "fine".
+4. A fine creates a `Charge` (03) of type "fine", issued on Asaas like any other charge
+   (17).
 5. Immutable history: entries can be complemented, not edited or deleted.
 6. Shift log mode for portaria.
 

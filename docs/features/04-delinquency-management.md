@@ -1,6 +1,6 @@
 # 04 — Delinquency Management
 
-**Status:** Proposed · **Phase:** MVP · **Depends on:** 03
+**Status:** Proposed · **Phase:** MVP · **Depends on:** 03, 17
 
 ## Summary
 Track units with overdue charges and run an automatic collection schedule (régua de
@@ -20,11 +20,18 @@ cobrança). Delinquency status is also used by other features to block privilege
 
 ## Functional requirements
 1. Configurable schedule: e.g. D-3 reminder, D+1, D+7, D+15 notices, D+30 escalation.
-2. Channels per step: push, email, SMS (see 16).
-3. Delinquency status per unit, recalculated when charges change.
-4. Installment agreements that replace overdue charges with new ones.
-5. Exposed rule `isDelinquent(unitId)` for other features (06 reservations, 12 voting).
-6. Export of the delinquency list for legal collection.
+2. Channels per step: push, email, SMS (see 16). **Asaas can send these reminders
+   itself** (email/SMS/WhatsApp, per-message fee). Pick one sender per condominium so
+   residents never get duplicates (see 17).
+3. Delinquency status per unit, driven by Asaas webhooks: `PAYMENT_OVERDUE` marks it,
+   `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED` clears it. A `confirmed` payment (paid,
+   funds not yet available) already counts as paid.
+4. Installment agreements that replace overdue charges with new ones, created on Asaas
+   as an installment payment (`installmentCount`), with a carnê PDF.
+5. Fine and interest are calculated by Asaas from the `fine` / `interest` sent with
+   each charge (03); we don't compute them ourselves.
+6. Exposed rule `isDelinquent(unitId)` for other features (06 reservations, 12 voting).
+7. Export of the delinquency list for legal collection.
 
 ## Data model (draft)
 ```prisma

@@ -14,7 +14,7 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 |---|---|
 | **Morador** (resident) | Owner or tenant of a unit. Uses the web app or the Android app. |
 | **Síndico** (manager) | Elected manager of a condominium. Full admin rights in that condominium. |
-| **Administradora** | Management company that may run several condominiums for their síndicos. |
+| **Administradora** | Management company that runs several condominiums. **Our paying customer** (seats + add-ons, 18) and the receiver of residents' payments via Asaas split (17). |
 | **Portaria / Funcionário** (staff) | Doorman, janitor, maintenance staff. Limited, operational access. |
 
 ## Features
@@ -23,10 +23,10 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 |---|---|---|---|
 | [01](01-authentication-and-2fa.md) | Authentication (email link + Google) | MVP (foundation) — implemented v1 | — |
 | [02](02-condominium-units-and-residents.md) | Condominium, units & residents | MVP (foundation) | 01 |
-| [03](03-billing-and-payments.md) | Billing & payments (boleto / Pix) | MVP (foundation) | 01, 02 |
-| [04](04-delinquency-management.md) | Delinquency management | MVP | 03 |
-| [05](05-financial-transparency.md) | Financial transparency & dashboard | MVP | 03 |
-| [06](06-common-area-reservations.md) | Common area reservations | MVP | 02, 04 |
+| [03](03-billing-and-payments.md) | Billing & payments (boleto / Pix via Asaas) | MVP (foundation) | 01, 02, 17 |
+| [04](04-delinquency-management.md) | Delinquency management | MVP | 03, 17 |
+| [05](05-financial-transparency.md) | Financial transparency & dashboard | MVP | 03, 17 |
+| [06](06-common-area-reservations.md) | Common area reservations (paid add-on) | MVP | 02, 04, 18 |
 | [07](07-announcements-board.md) | Announcements board | MVP | 02, 16 |
 | [08](08-maintenance-requests.md) | Maintenance requests | MVP | 02, 16 |
 | [09](09-occurrence-log.md) | Occurrence log | Post-MVP | 02 |
@@ -37,14 +37,20 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 | [14](14-service-providers-and-inventory.md) | Service providers & inventory | Post-MVP | 02 |
 | [15](15-manager-task-calendar.md) | Manager task calendar | Post-MVP | 02 |
 | [16](16-notifications.md) | Notifications (push, email, SMS) | MVP (cross-cutting) | 01 |
+| [17](17-asaas-payments-platform.md) | Asaas payments platform (all money flows) | MVP (foundation, cross-cutting) | 02 |
+| [18](18-platform-billing.md) | Platform billing (seats + add-ons) | MVP | 02, 17, 19 |
+| [19](19-administradora-manager-area.md) | Administradora manager area | MVP (later) | 01, 02, 17, 18 |
 
 ## Platform notes that apply to every feature
 
 - **Web + Android:** the same Next.js app serves browsers and the Capacitor Android app
   (loaded via `server.url`). Features that use native capabilities (camera, push,
   QR scanning) call out how they behave in each.
-- **Multi-tenancy:** every record belongs to a `Condominium`. Every query must be scoped
-  by condominium and checked against the user's role in it.
+- **Multi-tenancy:** `Administradora` → `Condominium` → `Unit`. Every record belongs to a
+  condominium (and through it to an administradora). Every query must be scoped and
+  checked against the user's role.
+- **Payments:** every payment in the app goes through Asaas. See 17 before touching
+  anything that involves money.
 - **LGPD:** residents' personal data (CPF, phone, plates, photos, visitor data) is
   sensitive. A leak can lead to lawsuits against the condominium and fines from the ANPD.
   Collect the minimum, log access to sensitive data, and define retention periods.

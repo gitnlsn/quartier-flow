@@ -1,6 +1,7 @@
 # 06 — Common Area Reservations
 
 **Status:** Proposed · **Phase:** MVP · **Depends on:** 02, 04 (03 if fees apply)
+**Paid add-on:** monthly fee charged to the administradora when enabled (18).
 
 ## Summary
 Residents book common areas (party room, barbecue area, gym, court) from their phone,
@@ -24,7 +25,9 @@ following rules the síndico defines. Staff are notified to prepare the space.
 2. Slot types: full day or hourly.
 3. Rule engine: min/max advance, per-unit limits, blackout dates, approval required.
 4. Delinquency block via `isDelinquent` (04), configurable per area.
-5. Reservation fee creates a `Charge` (03).
+5. Reservation fee creates a `Charge` (03), i.e. an Asaas payment from our main account
+   split to the administradora (Pix for immediate confirmation). Cancellation inside the allowed window
+   deletes the unpaid payment or refunds a paid one on Asaas (17).
 6. Guest list per booking (feeds 10 visitor control).
 7. Notifications to staff and resident (16); post-use inspection checklist.
 

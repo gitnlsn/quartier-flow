@@ -64,6 +64,9 @@ model NotificationPreference {
 - SMS is the most expensive channel; restrict to 2FA (01), urgent notices (07) and
   optionally collection steps (04).
 - Never put sensitive data (debt amounts, codes) in push previews.
+- **Charge notifications overlap with Asaas** (17): Asaas can email/SMS/WhatsApp
+  payers itself. If we send charge reminders, set `notificationDisabled: true` on the
+  Asaas customer; otherwise don't send our own. Never both.
 
 ## Open questions
 - Which email and SMS providers?
