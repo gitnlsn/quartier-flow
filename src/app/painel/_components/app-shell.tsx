@@ -449,6 +449,11 @@ function Shell({
 	const activeCondoId =
 		known(fromUrl) ?? known(lastCondoId) ?? condos[0]?.id ?? null;
 	const hasCondos = condos.length > 0;
+	// Sign-up and setup are a focused flow: no tab bar competing with the
+	// step's own buttons on phones (the brand still links back to Início).
+	const focused =
+		pathname.startsWith("/painel/comecar") ||
+		pathname.startsWith("/painel/onboarding");
 
 	const groups = buildGroups(
 		isAdmin,
@@ -519,14 +524,22 @@ function Shell({
 				)}
 			</header>
 
-			<main className="px-4 pt-6 pb-28 md:ml-64 md:px-8 md:pt-10 md:pb-10">
+			<main
+				className={cn(
+					"px-4 pt-6 md:ml-64 md:px-8 md:pt-10 md:pb-10",
+					focused ? "pb-10" : "pb-28",
+				)}
+			>
 				<div className="mx-auto max-w-5xl">{children}</div>
 			</main>
 
 			{/* Mobile bottom tab bar */}
 			<nav
 				aria-label="Navegação principal"
-				className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+				className={cn(
+					"fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden",
+					focused && "hidden",
+				)}
 			>
 				{tabs.map((tab) => {
 					const active = isActive(pathname, tab);

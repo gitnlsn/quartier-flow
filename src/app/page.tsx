@@ -32,6 +32,14 @@ export default async function Home() {
 									Simplificada
 								</span>
 							</h1>
+							<div className="mt-6 flex animate-delay-100 animate-slide-up flex-col justify-center gap-2 sm:flex-row md:mt-10 md:gap-4">
+								<Button href="/cadastro" size="lg">
+									Criar Conta →
+								</Button>
+								<Button href="/entrar" variant="outline" size="lg">
+									Entrar
+								</Button>
+							</div>
 							<div className="mt-10 mb-8 flex animate-delay-100 animate-slide-up justify-center md:mb-16">
 								<CircularText
 									text="Quartier Flow * Quartier Flow * "

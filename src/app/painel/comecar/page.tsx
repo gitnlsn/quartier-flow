@@ -2,7 +2,7 @@
 
 import { ArrowLeft, CheckCircle2, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 
 import { TermsContent } from "~/app/_components/terms-content";
 import { formatBRL, formatCnpj } from "~/lib/br";
@@ -36,29 +36,38 @@ const STEPS: { n: Step; label: string }[] = [
 ];
 
 function Progress({ step }: { step: Step }) {
+	const current = STEPS.find((s) => s.n === step);
 	return (
-		<ol className="mb-6 grid grid-cols-4 gap-2" aria-label="Etapas">
-			{STEPS.map((s) => (
-				<li key={s.n} aria-current={s.n === step ? "step" : undefined}>
-					<span
-						className={
-							s.n <= step
-								? "block h-1.5 rounded-full bg-primary"
-								: "block h-1.5 rounded-full bg-muted"
-						}
-					/>
-					<span
-						className={
-							s.n === step
-								? "mt-1.5 block font-medium text-xs"
-								: "mt-1.5 block text-muted-foreground text-xs"
-						}
-					>
-						{s.n}. {s.label}
-					</span>
-				</li>
-			))}
-		</ol>
+		<div className="mb-6">
+			<p className="mb-2 font-medium text-sm sm:hidden" aria-hidden>
+				Passo {step} de {STEPS.length} · {current?.label}
+			</p>
+			<ol className="grid grid-cols-4 gap-2" aria-label="Etapas">
+				{STEPS.map((s) => (
+					<li key={s.n} aria-current={s.n === step ? "step" : undefined}>
+						<span
+							className={
+								s.n <= step
+									? "block h-1.5 rounded-full bg-primary"
+									: "block h-1.5 rounded-full bg-muted"
+							}
+						/>
+						<span
+							className={
+								s.n === step
+									? "mt-1.5 hidden font-medium text-xs sm:block"
+									: "mt-1.5 hidden text-muted-foreground text-xs sm:block"
+							}
+						>
+							{s.n}. {s.label}
+						</span>
+						<span className="sr-only sm:hidden">
+							{s.n}. {s.label}
+						</span>
+					</li>
+				))}
+			</ol>
+		</div>
 	);
 }
 
@@ -87,7 +96,10 @@ function NameStep({ state, onDone }: { state: State; onDone: () => void }) {
 	}
 
 	return (
-		<Card title={<StepTitle n={1} title="Você" done={false} />}>
+		<Card
+			className="overflow-visible"
+			title={<StepTitle n={1} title="Você" done={false} />}
+		>
 			<form onSubmit={submit} className="space-y-4" noValidate>
 				<p className="text-muted-foreground">
 					Vamos cadastrar sua administradora em 4 passos. Nada é contratado nem
@@ -108,7 +120,7 @@ function NameStep({ state, onDone }: { state: State; onDone: () => void }) {
 				<ErrorMessage
 					message={Object.keys(errors).length ? null : errorMessage(save.error)}
 				/>
-				<div className="flex justify-end">
+				<div className="-mx-1 sticky bottom-0 z-20 flex justify-end border-t bg-card/95 px-1 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
 					<Button type="submit" pending={save.isPending}>
 						Continuar
 					</Button>
@@ -146,7 +158,10 @@ function CompanyStep({
 	}
 
 	return (
-		<Card title={<StepTitle n={2} title="Sua administradora" done={false} />}>
+		<Card
+			className="overflow-visible"
+			title={<StepTitle n={2} title="Sua administradora" done={false} />}
+		>
 			<form onSubmit={submit} className="space-y-4" noValidate>
 				<p className="text-muted-foreground">
 					A administradora é a empresa que contrata o Quartier Flow, cadastra os
@@ -179,7 +194,7 @@ function CompanyStep({
 				<ErrorMessage
 					message={Object.keys(errors).length ? null : errorMessage(save.error)}
 				/>
-				<div className="flex justify-between gap-2">
+				<div className="-mx-1 sticky bottom-0 z-20 flex justify-between gap-2 border-t bg-card/95 px-1 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
 					<BackButton onClick={onBack} />
 					<Button type="submit" pending={save.isPending}>
 						Continuar
@@ -219,7 +234,10 @@ function PlanStep({
 	onDone: () => void;
 }) {
 	return (
-		<Card title={<StepTitle n={3} title="Plano" done={false} />}>
+		<Card
+			className="overflow-visible"
+			title={<StepTitle n={3} title="Plano" done={false} />}
+		>
 			<div className="space-y-4">
 				<p className="text-muted-foreground">
 					Você paga por <strong className="text-foreground">assento</strong>:
@@ -233,7 +251,7 @@ function PlanStep({
 					onSelect={onSelect}
 				/>
 				{selected && <PriceExample plan={selected} />}
-				<div className="flex justify-between gap-2">
+				<div className="-mx-1 sticky bottom-0 z-20 flex justify-between gap-2 border-t bg-card/95 px-1 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
 					<BackButton onClick={onBack} />
 					<Button disabled={!selected} onClick={onDone}>
 						Revisar e ler os termos
@@ -326,7 +344,10 @@ function TermsStep({
 	const admin = state.administradora;
 
 	return (
-		<Card title={<StepTitle n={4} title="Termos e assinatura" done={false} />}>
+		<Card
+			className="overflow-visible"
+			title={<StepTitle n={4} title="Termos e assinatura" done={false} />}
+		>
 			<div className="space-y-6">
 				<section className="space-y-2">
 					<h3 className="font-semibold">Resumo da assinatura</h3>
@@ -412,7 +433,7 @@ function TermsStep({
 				</fieldset>
 
 				<ErrorMessage message={errorMessage(sign.error)} />
-				<div className="flex flex-col-reverse justify-between gap-2 sm:flex-row">
+				<div className="-mx-1 sticky bottom-0 z-20 flex items-center justify-between gap-2 border-t bg-card/95 px-1 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
 					<BackButton onClick={onBack} />
 					<Button
 						disabled={!allChecked}
@@ -441,6 +462,10 @@ function TermsStep({
 }
 
 function Done({ state }: { state: State }) {
+	// Signing happens at the end of a long page: start the result at the top.
+	useEffect(() => {
+		window.scrollTo({ top: 0 });
+	}, []);
 	const plan = state.plan;
 	if (!plan) return null;
 	const signedAt = new Date(plan.signedAt);
@@ -463,9 +488,6 @@ function Done({ state }: { state: State }) {
 					</p>
 				</div>
 			</Card>
-			<Card title="O que acontece agora">
-				<NextStepsList steps={nextSteps({ planName: plan.name, signedAt })} />
-			</Card>
 			<div className="flex flex-col gap-2 sm:flex-row">
 				<a
 					href="/painel/onboarding"
@@ -480,6 +502,9 @@ function Done({ state }: { state: State }) {
 					Criar primeiro condomínio
 				</a>
 			</div>
+			<Card title="O que acontece agora">
+				<NextStepsList steps={nextSteps({ planName: plan.name, signedAt })} />
+			</Card>
 		</div>
 	);
 }
@@ -500,6 +525,11 @@ export default function ComecarPage() {
 
 	const initial: Step = !data.name.trim() ? 1 : !data.administradora ? 2 : 3;
 	const current = step ?? initial;
+	const goTo = (next: Step) => {
+		setStep(next);
+		// A new step starts at the top (phones keep the previous scroll).
+		window.scrollTo({ top: 0 });
+	};
 
 	return (
 		<div className="mx-auto max-w-3xl">
@@ -522,17 +552,17 @@ export default function ComecarPage() {
 					state={data}
 					onDone={async () => {
 						await state.refetch();
-						setStep(data.administradora ? 3 : 2);
+						goTo(data.administradora ? 3 : 2);
 					}}
 				/>
 			)}
 			{current === 2 && (
 				<CompanyStep
 					state={data}
-					onBack={() => setStep(1)}
+					onBack={() => goTo(1)}
 					onDone={async () => {
 						await state.refetch();
-						setStep(3);
+						goTo(3);
 					}}
 				/>
 			)}
@@ -540,19 +570,19 @@ export default function ComecarPage() {
 				<PlanStep
 					selected={plan}
 					onSelect={setPlan}
-					onBack={() => setStep(2)}
-					onDone={() => setStep(4)}
+					onBack={() => goTo(2)}
+					onDone={() => goTo(4)}
 				/>
 			)}
 			{current === 4 && plan && (
-				<TermsStep state={data} plan={plan} onBack={() => setStep(3)} />
+				<TermsStep state={data} plan={plan} onBack={() => goTo(3)} />
 			)}
 			{current === 4 && !plan && (
 				<PlanStep
 					selected={plan}
 					onSelect={setPlan}
-					onBack={() => setStep(2)}
-					onDone={() => setStep(4)}
+					onBack={() => goTo(2)}
+					onDone={() => goTo(4)}
 				/>
 			)}
 		</div>

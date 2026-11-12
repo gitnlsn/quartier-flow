@@ -88,7 +88,13 @@ export function Header() {
 					</a>
 				</div>
 
-				{/* Mobile Menu Button */}
+				{/* Mobile: quick sign-in + menu */}
+				<a
+					href="/entrar"
+					className="mr-3 ml-auto border border-white px-3 py-1.5 font-bold text-sm text-white md:hidden"
+				>
+					Entrar
+				</a>
 				<button
 					onClick={() => setIsOpen(!isOpen)}
 					className="text-white md:hidden"
