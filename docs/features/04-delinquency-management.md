@@ -1,6 +1,6 @@
 # 04 — Delinquency Management
 
-**Status:** Proposed · **Phase:** MVP · **Depends on:** 03, 17
+**Status:** Slice 1 implemented (Nov/2026) · **Phase:** MVP · **Depends on:** 03, 17
 
 ## Summary
 Track units with overdue charges and run an automatic collection schedule (régua de
@@ -74,3 +74,55 @@ model Agreement {
 - Condomob advertises automated delinquency management and a collection schedule
   ([Group Software](https://www.groupsoftware.com.br/blog/aplicativo-para-gestao-de-condominios)).
 - Group COM's dashboard tracks delinquency ([Group Software](https://www.groupsoftware.com.br/blog/aplicativo-para-condominios/)).
+
+## Implementation (slice 1, Nov/2026)
+Decisions that change the draft above:
+- **Acordos ride on the monthly charges** instead of an Asaas installment payment:
+  the installments are a `UnitBillingItem` (`source: "agreement"`, recurrence
+  `installments`) starting in the next month not yet sent, shown as "Acordo (2/6)"
+  in the monthly boleto. One boleto (and one Asaas fee) per month, no carnê.
+  An optional **entrada** is a standalone charge (`type: "agreement"`) issued at once.
+- The renegotiated overdue charges are **deleted on Asaas** and get status
+  `renegotiated` (the webhook never changes them again). Creation is two-step and
+  retryable: `Agreement.status` stays `pending` until every deletion succeeded
+  ("Tentar novamente"); a pending acordo can be cancelled, which restores the
+  deleted payments on Asaas.
+- **Broken acordos are not automatic.** An unpaid installment makes the monthly charge
+  overdue, so the unit is delinquent again and the acordo shows "Em atraso"; the
+  administradora decides to "Encerrar" it (no more installments; issued ones stay owed).
+  "Concluído" / "Em atraso" are derived from the charges, not stored.
+- **Reminders are sent by Asaas** (17), configured per condominium and applied to
+  each payer's Asaas notifications (`BillingConfig.reminder*`,
+  `PaymentCustomer.notificationsKey`), synced on save and before each boleto.
+  Asaas has, per side of the due date, a **fixed** reminder (on the due date / when
+  it becomes overdue: on/off only) and **one adjustable** one (5/10/15/30 days
+  before; 1/7/15/30 days after); verified on the sandbox. SMS/WhatsApp only reach
+  payers with a phone on Asaas (we don't collect phones yet), others get email.
+- **Ending an acordo keeps the debt:** the installments never issued become one
+  overdue charge "Saldo do acordo encerrado" (not on Asaas), so it stays in the totals,
+  the export and `isDelinquent`, and can go to a new acordo or be forgiven.
+- **Forgiveness ("Perdoar cobranças"):** the administradora writes off overdue charges
+  with a required reason (e.g. a unit whose payer left). Each is deleted on Asaas and
+  gets status `forgiven` with `forgivenAt/By/Reason` (shown in Histórico) plus an
+  `AuditLog` entry (`charge.forgive`). Not reversible.
+- **Permissions:** administradora admins act (acordos, forgiveness, reminders, export); the síndico
+  sees the module read-only. Residents never see the list.
+
+What exists:
+- `isDelinquent(unitId)` in `src/server/delinquency.ts` (used by reservations, 06).
+- Module **Inadimplência** (`/painel/condominios/[id]/inadimplencia`): totals, overdue
+  units (days late, payer), acordos with progress, "Propor acordo" dialog with a
+  fine/interest estimate (Asaas computes the real value), CSV export with full CPF for
+  legal collection (admin only, logged in `AuditLog` as `delinquency.export`).
+- Settings → **Lembretes de pagamento**.
+- Residents: "Seu acordo" card in Minhas cobranças (progress, remaining, entrada link).
+- Code: `src/server/delinquency.ts`, `src/server/api/routers/delinquency.ts`,
+  `src/server/asaas/notifications.ts`, `src/lib/delinquency.ts`.
+
+- Acordo installments (and reservation fees) can't be edited or removed in Cobranças →
+  Itens individuais; they link to their module instead.
+- New items (acordo, reservation fee) never start in a month whose due date has
+  passed or whose run was already sent (`nextOpenPeriod`), so no installment is lost.
+
+Not yet: our own reminders through 16 (push), automatic break after N days, blocking
+voting (12), editing an active acordo, legal-collection workflow beyond the export.

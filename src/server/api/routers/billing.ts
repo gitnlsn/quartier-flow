@@ -36,8 +36,31 @@ async function assertRun(
 	return run;
 }
 
+/**
+ * Items created by other modules (acordo installments, reservation fees) are
+ * managed there: editing or removing them here would break that record.
+ */
+async function assertEditableItem(db: typeof Db, itemId: string) {
+	const item = await db.unitBillingItem.findUnique({
+		where: { id: itemId },
+		select: { source: true },
+	});
+	if (item?.source === "agreement") {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "Parcelas de acordo são gerenciadas em Inadimplência.",
+		});
+	}
+	if (item?.source === "reservation") {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "Taxas de reserva são gerenciadas em Reservas.",
+		});
+	}
+}
+
 /** Turns domain errors into messages the management area can show. */
-async function asUserError<T>(work: () => Promise<T>) {
+export async function asUserError<T>(work: () => Promise<T>) {
 	try {
 		return await work();
 	} catch (error) {
@@ -48,7 +71,7 @@ async function asUserError<T>(work: () => Promise<T>) {
 	}
 }
 
-async function assertManagedCondominium(
+export async function assertManagedCondominium(
 	db: typeof Db,
 	administradoraId: string,
 	condominiumId: string,
@@ -264,6 +287,7 @@ export const billingRouter = createTRPCRouter({
 				select: { id: true },
 			});
 			if (!unit) throw new TRPCError({ code: "NOT_FOUND" });
+			if (input.itemId) await assertEditableItem(ctx.db, input.itemId);
 			const saved = input.itemId
 				? await ctx.db.unitBillingItem.update({
 						where: { id: input.itemId, unitId: unit.id },
@@ -295,6 +319,7 @@ export const billingRouter = createTRPCRouter({
 				ctx.administradoraId,
 				input.condominiumId,
 			);
+			await assertEditableItem(ctx.db, input.itemId);
 			const item = await ctx.db.unitBillingItem.update({
 				where: { id: input.itemId, condominiumId: input.condominiumId },
 				data: { archivedAt: new Date() },
@@ -392,6 +417,8 @@ export const billingRouter = createTRPCRouter({
 						"failed",
 						"canceled",
 						"refunded",
+						"renegotiated",
+						"forgiven",
 					])
 					.optional(),
 				limit: z.number().int().min(1).max(1000).default(500),

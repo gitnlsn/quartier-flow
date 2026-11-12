@@ -4,7 +4,7 @@ import { ArrowRight, Building2 } from "lucide-react";
 
 import { api } from "~/trpc/react";
 import { AdminOverview } from "./_components/admin-overview";
-import { MyCharges } from "./_components/my-charges";
+import { MyAgreements, MyCharges } from "./_components/my-charges";
 import { TermsUpdateCard } from "./_components/terms-update";
 import { Card, Loading, PageTitle } from "./_components/ui";
 import { useSelectedUnit } from "./_components/unit-context";
@@ -91,7 +91,10 @@ export default function PainelHome() {
 							Ver todas <ArrowRight className="size-4" aria-hidden />
 						</a>
 					</div>
-					<MyCharges onlyOpen />
+					<div className="space-y-3">
+						<MyAgreements />
+						<MyCharges onlyOpen />
+					</div>
 				</section>
 			)}
 

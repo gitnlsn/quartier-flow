@@ -175,6 +175,14 @@ Asaas can notify payers by email, SMS, WhatsApp, Correios and voice. **Each send
 fee**, charged to our main account (the issuer). Decide: Asaas-sent, or set
 `notificationDisabled: true` and send our own through 16. Never both.
 
+**Decided (Nov/2026): Asaas sends them**, configured per condominium (04) via
+`PUT /notifications/batch` (`src/server/asaas/notifications.ts`). Each customer has
+two `PAYMENT_DUEDATE_WARNING` and two `PAYMENT_OVERDUE` notifications; in each pair
+the one with `scheduleOffset: 0` can't change its offset (only on/off), the other
+accepts 5/10/15/30 (before) or 1/7/15/30 (after). The batch fails if SMS/WhatsApp is
+on for a customer without a phone. Robocalls are always off. Settings are per Asaas customer, so a payer in two condominiums gets the
+last one synced.
+
 ## Security
 - Main API key (`$aact_prod_…` / `$aact_hmlg_…`) only on the server, in env vars.
   Consider Asaas's IP restriction for it.
@@ -217,7 +225,7 @@ model WebhookEvent {              // idempotency + audit
 
 ## Open questions
 1. Per-condominium segregation and branding ("Still to decide").
-2. **Notifications:** Asaas-sent (fee paid by the administradora) or ours?
+2. ~~**Notifications:** Asaas-sent or ours?~~ Asaas-sent (see above).
 3. **Payment methods:** boleto + Pix only, or credit card too?
 
 ## References

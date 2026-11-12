@@ -2,6 +2,7 @@
 
 import { cn } from "cn";
 import {
+	AlertTriangle,
 	Building2,
 	CalendarDays,
 	Check,
@@ -107,6 +108,11 @@ function buildGroups(
 						href: condoPath(condoId, "despesas"),
 						label: "Despesas",
 						icon: <Wallet />,
+					},
+					{
+						href: condoPath(condoId, "inadimplencia"),
+						label: "Inadimplência",
+						icon: <AlertTriangle />,
 					},
 				],
 			},

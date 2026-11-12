@@ -3,7 +3,6 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 
-import { addMonths } from "~/lib/billing-items";
 import { formatDate } from "~/lib/br";
 import {
 	ACTIVE_STATUSES,
@@ -19,8 +18,9 @@ import {
 	getAccess,
 } from "~/server/access";
 import { audit } from "~/server/audit";
-import { prepareRun } from "~/server/billing/runs";
+import { nextOpenPeriod, refreshDraftRun } from "~/server/billing/runs";
 import { db } from "~/server/db";
+import { isDelinquent } from "~/server/delinquency";
 
 /**
  * Common area reservations (docs/features/06): who may manage them, the
@@ -119,38 +119,6 @@ export const unitLabel = (unit: { block: string; number: string }) =>
 	unit.block ? `${unit.block} · ${unit.number}` : unit.number;
 
 /**
- * Month whose charge carries a reservation fee: the one after the latest
- * monthly charge already sent (or the current month, if later). A month
- * before the latest sent one would never be billed.
- */
-async function feePeriod(tx: Prisma.TransactionClient, condominiumId: string) {
-	const current = spMonth(new Date());
-	const latestSent = await tx.billingRun.findFirst({
-		where: { condominiumId, status: { not: "draft" } },
-		orderBy: { period: "desc" },
-		select: { period: true },
-	});
-	const next = latestSent ? addMonths(latestSent.period, 1) : current;
-	return next > current ? next : current;
-}
-
-/** Keeps a draft monthly run in sync after a fee item was added or removed. */
-async function refreshDraftRun(
-	condominiumId: string,
-	period: string,
-	actorUserId: string,
-) {
-	const run = await db.billingRun.findUnique({
-		where: { condominiumId_period: { condominiumId, period } },
-		select: { status: true },
-	});
-	if (run?.status !== "draft") return;
-	await prepareRun({ condominiumId, period, actorUserId }).catch((error) => {
-		console.error("[reservations] draft run refresh failed", error);
-	});
-}
-
-/**
  * Confirms a reservation: adds the fee (if any) as a one-off item of the unit
  * in the next monthly charge not yet sent.
  */
@@ -170,7 +138,7 @@ async function confirm(
 	let period: string | null = null;
 	let billingItemId: string | null = null;
 	if (reservation.feeCents > 0) {
-		period = await feePeriod(tx, reservation.condominiumId);
+		period = await nextOpenPeriod(tx, reservation.condominiumId);
 		const item = await tx.unitBillingItem.create({
 			data: {
 				condominiumId: reservation.condominiumId,
@@ -249,10 +217,7 @@ export async function book(input: {
 	if (problem) fail(problem);
 
 	if (area.blockDelinquent) {
-		const overdue = await db.charge.count({
-			where: { unitId: input.unitId, status: "overdue" },
-		});
-		if (overdue > 0) {
+		if (await isDelinquent(input.unitId)) {
 			fail(
 				"Sua unidade tem cobranças em atraso. Regularize para reservar esta área.",
 			);

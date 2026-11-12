@@ -17,6 +17,7 @@ import {
 } from "../../../_components/ui";
 import { ChargesTab, SettingsTab } from "./billing-tab";
 import { useCondo } from "./condo-context";
+import { DelinquencyTab } from "./delinquency-tab";
 import { ExpensesTab } from "./expenses-tab";
 import { FollowUpTab, HistoryTab } from "./history-tab";
 import { OverviewTab } from "./overview-tab";
@@ -160,6 +161,15 @@ export function ExpensesPage() {
 		<>
 			<ModuleTitle title="Despesas" help="despesas-e-notas" />
 			<ExpensesTab condo={useCondo()} />
+		</>
+	);
+}
+
+export function DelinquencyPage() {
+	return (
+		<>
+			<ModuleTitle title="Inadimplência" help="inadimplencia-e-acordos" />
+			<DelinquencyTab condo={useCondo()} />
 		</>
 	);
 }

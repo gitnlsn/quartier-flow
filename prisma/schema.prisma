@@ -52,6 +52,7 @@ model User {
   administradoraRoles AdministradoraMember[]
   memberships         Membership[]
   paymentCustomer     PaymentCustomer?
+  agreementsCreated   Agreement[]            @relation("AgreementCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -194,6 +195,7 @@ model Condominium {
   commonAreas   CommonArea[]
   reservations  Reservation[]
   areaBlocks    AreaBlock[]
+  agreements    Agreement[]
 
   @@index([administradoraId])
 }
@@ -212,6 +214,7 @@ model Unit {
   itemOverrides BillingItemOverride[]
   items         UnitBillingItem[]
   reservations  Reservation[]
+  agreements    Agreement[]
 
   @@unique([condominiumId, block, number])
   @@index([condominiumId])
@@ -319,26 +322,36 @@ model PayoutAccount {
 }
 
 model PaymentCustomer {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  asaasCustomerId String   @unique
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asaasCustomerId  String   @unique
+  /// Reminder settings last applied to this customer's Asaas notifications
+  /// (docs/features/04), so they are only re-synced when they change.
+  notificationsKey String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model BillingConfig {
-  id              String      @id @default(cuid())
-  condominiumId   String      @unique
-  condominium     Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
-  enabled         Boolean     @default(false)
-  mode            String      @default("manual") // manual | automatic
-  dueDay          Int         @default(10) // 1-28
-  generationDay   Int         @default(1) // 1-28, day the run is prepared (and sent if automatic)
-  finePercent     Decimal     @default(2) @db.Decimal(5, 2)
-  interestPercent Decimal     @default(1) @db.Decimal(5, 2) // per month
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  condominiumId    String      @unique
+  condominium      Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  enabled          Boolean     @default(false)
+  mode             String      @default("manual") // manual | automatic
+  dueDay           Int         @default(10) // 1-28
+  generationDay    Int         @default(1) // 1-28, day the run is prepared (and sent if automatic)
+  finePercent      Decimal     @default(2) @db.Decimal(5, 2)
+  interestPercent  Decimal     @default(1) @db.Decimal(5, 2) // per month
+  /// Payment reminders sent by Asaas (docs/features/04). 0 = Asaas's fixed
+  /// slot (on the due date / when overdue) + at most one adjustable value.
+  reminderBefore   Int[]       @default([0, 10]) // 0 and/or one of 5 | 10 | 15 | 30 days before
+  reminderAfter    Int[]       @default([0, 7]) // 0 and/or one of 1 | 7 | 15 | 30 days after
+  reminderEmail    Boolean     @default(true)
+  reminderSms      Boolean     @default(true)
+  reminderWhatsapp Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 model BillingRun {
@@ -373,6 +386,8 @@ model Charge {
   amountCents     Int
   dueDate         DateTime
   // draft | skipped | pending | confirmed | received | overdue | canceled | refunded | failed
+  // | renegotiated (replaced by an acordo, deleted on Asaas: docs/features/04)
+  // | forgiven (written off by the administradora, deleted on Asaas: 04)
   status          String       @default("draft")
   issue           String? // why a draft can't be sent (no payer, missing CPF...) or Asaas error
   asaasPaymentId  String?      @unique
@@ -382,11 +397,61 @@ model Charge {
   paidAmountCents Int?
   feeCents        Int? // Asaas fee (value - netValue), paid by the administradora
   lines           ChargeLine[]
+  /// Written off by the administradora (docs/features/04): who, when, why
+  forgivenAt      DateTime?
+  forgivenById    String?
+  forgivenReason  String?
+  /// Acordo that renegotiated this charge (docs/features/04)
+  agreementId     String?
+  agreement       Agreement?   @relation("AgreementOriginalCharges", fields: [agreementId], references: [id], onDelete: SetNull)
+  /// Set on the acordo's entrada (down payment) charge
+  downPaymentOf   Agreement?   @relation("AgreementDownPayment")
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
   @@unique([runId, unitId])
   @@index([condominiumId, status])
+  @@index([unitId])
+  @@index([agreementId])
+}
+
+/**
+ * Acordo (docs/features/04): replaces a unit's overdue charges, which are
+ * deleted on Asaas (status `renegotiated`). The installments are a
+ * UnitBillingItem that rides on the next monthly charges; the optional
+ * entrada is a standalone charge issued right away.
+ * status: pending (Asaas deletions not finished) | active | broken.
+ * "Em atraso" and "concluído" are derived from the charges on read.
+ */
+model Agreement {
+  id                  String           @id @default(cuid())
+  condominiumId       String
+  condominium         Condominium      @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  unitId              String
+  unit                Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  payerUserId         String?
+  status              String           @default("pending")
+  originalCents       Int // sum of the renegotiated charges (without fine/interest)
+  totalCents          Int // entrada + installments * installmentCents
+  downPaymentCents    Int              @default(0)
+  downPaymentDueDate  DateTime?
+  installments        Int
+  installmentCents    Int
+  billingItemId       String?          @unique
+  billingItem         UnitBillingItem? @relation(fields: [billingItemId], references: [id], onDelete: SetNull)
+  downPaymentChargeId String?          @unique
+  downPaymentCharge   Charge?          @relation("AgreementDownPayment", fields: [downPaymentChargeId], references: [id], onDelete: SetNull)
+  notes               String?
+  createdById         String
+  createdBy           User             @relation("AgreementCreatedBy", fields: [createdById], references: [id])
+  brokenAt            DateTime?
+  brokenById          String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  originalCharges Charge[] @relation("AgreementOriginalCharges")
+
+  @@index([condominiumId])
   @@index([unitId])
 }
 
@@ -495,12 +560,13 @@ model UnitBillingItem {
   recurrence    String // monthly | installments | once
   startPeriod   String
   installments  Int?
-  source        String      @default("manual") // manual | import | reservation
+  source        String      @default("manual") // manual | import | reservation | agreement
   archivedAt    DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   reservation Reservation?
+  agreement   Agreement?
 
   @@index([unitId])
   @@index([condominiumId, startPeriod])

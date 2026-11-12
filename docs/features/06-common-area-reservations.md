@@ -54,8 +54,8 @@ following rules the síndico defines. Staff are notified to prepare the space.
   created when the booking is confirmed. A
   draft run of that month is rebuilt. Canceling/rejecting archives the item while its
   month is unsent; if already sent, the fee stays and the manager is told to refund it.
-- **Delinquency:** until 04 ships `isDelinquent`, a unit is delinquent when it has a
-  charge with status `overdue`.
+- **Delinquency:** `isDelinquent(unitId)` from 04 (`src/server/delinquency.ts`): the
+  unit has a charge with status `overdue`.
 - **Time:** stored in UTC, computed in São Paulo time (fixed UTC-3) by
   `src/lib/reservations.ts`, shared by server and calendar.
 - **Screens:** `/painel/condominios/[id]/reservas` (bookings: approve, reject, cancel) and

@@ -95,7 +95,7 @@ Asaas customers, payment accounts and webhook events: see 17.
 
 ## Open questions
 - Credit card too, or boleto + Pix only?
-- Do we let Asaas send charge notifications, or send our own (see 17)?
+- ~~Do we let Asaas send charge notifications, or send our own?~~ Asaas sends them (04, 17).
 
 ## Market references
 - Superlógica's resident app shows open/paid charges, second copies and barcode copy

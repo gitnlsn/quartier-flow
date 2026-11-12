@@ -41,7 +41,10 @@ async function handlePayment(event: AsaasEvent) {
 	const payment = event.payment;
 	if (!payment) return;
 	let status = PAYMENT_STATUS[event.event];
-	if (event.event === "PAYMENT_RESTORED") status = "pending";
+	if (event.event === "PAYMENT_RESTORED") {
+		// A restored past-due payment comes back as OVERDUE.
+		status = payment.status === "OVERDUE" ? "overdue" : "pending";
+	}
 	if (event.event === "PAYMENT_UPDATED") status = undefined;
 
 	const charge = await db.charge.findFirst({
@@ -62,6 +65,11 @@ async function handlePayment(event: AsaasEvent) {
 	if (status && FINAL_PAID.has(charge.status) && status !== "refunded") {
 		status = undefined;
 	}
+	// Replaced by an acordo or forgiven (docs/features/04): we deleted it on
+	// Asaas ourselves, so its events (PAYMENT_DELETED, late OVERDUE) change nothing.
+	if (charge.status === "renegotiated" || charge.status === "forgiven") return;
+	// A late PAYMENT_OVERDUE must not revive a deleted charge.
+	if (charge.status === "canceled" && status === "overdue") status = undefined;
 	const paid = status === "confirmed" || status === "received";
 	await db.charge.update({
 		where: { id: charge.id },

@@ -2,7 +2,13 @@
 
 import { ExternalLink } from "lucide-react";
 
+import { formatPeriod } from "~/lib/billing-items";
 import { formatBRL, formatDate } from "~/lib/br";
+import {
+	AGREEMENT_STATE_LABEL,
+	AGREEMENT_STATE_TONE,
+	unitLabel,
+} from "~/lib/delinquency";
 import { api } from "~/trpc/react";
 import {
 	Badge,
@@ -14,6 +20,7 @@ import {
 import { useSelectedUnit } from "./unit-context";
 
 const OPEN = new Set(["pending", "overdue"]);
+const PAID = new Set(["confirmed", "received"]);
 
 /** "Novembro de 2026": capitalize only the first letter (not "De"). */
 const monthTitle = (date: Date | string) => {
@@ -106,7 +113,7 @@ export function MyCharges({ onlyOpen = false }: { onlyOpen?: boolean }) {
 									</details>
 								)}
 							</div>
-							{charge.invoiceUrl && (
+							{charge.invoiceUrl && (open || PAID.has(charge.status)) && (
 								<a
 									href={charge.invoiceUrl}
 									target="_blank"
@@ -118,6 +125,80 @@ export function MyCharges({ onlyOpen = false }: { onlyOpen?: boolean }) {
 									}
 								>
 									{open ? "Pagar com Pix ou boleto" : "Ver comprovante"}
+									<ExternalLink className="size-4" aria-hidden />
+								</a>
+							)}
+						</div>
+					</li>
+				);
+			})}
+		</ul>
+	);
+}
+
+/**
+ * Acordos the resident pays (docs/features/04): progress and what is left.
+ * The installments themselves show up as "Acordo (2/6)" in the monthly charge.
+ */
+export function MyAgreements() {
+	const { selected } = useSelectedUnit();
+	const agreements = api.portal.myAgreements.useQuery({
+		unitId: selected?.id ?? null,
+	});
+	const list = agreements.data ?? [];
+	if (list.length === 0) return null;
+
+	return (
+		<ul className="space-y-3">
+			{list.map((a) => {
+				const percent = Math.round(
+					(a.paidCents / Math.max(1, a.totalCents)) * 100,
+				);
+				const entradaOpen = a.entrada && OPEN.has(a.entrada.status);
+				return (
+					<li
+						key={a.id}
+						className="rounded-xl border bg-card p-4 shadow-xs md:p-5"
+					>
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+							<div className="min-w-0 flex-1 space-y-2">
+								<p className="flex flex-wrap items-center gap-2 font-semibold">
+									Seu acordo · Unidade {unitLabel(a.unit)}
+									<Badge tone={AGREEMENT_STATE_TONE[a.state]}>
+										{AGREEMENT_STATE_LABEL[a.state]}
+									</Badge>
+								</p>
+								<p className="text-sm">
+									{a.downPaymentCents > 0 &&
+										`Entrada de ${formatBRL(a.downPaymentCents)} + `}
+									{a.installments}× {formatBRL(a.installmentCents)}
+									{a.startPeriod &&
+										`, nas cobranças mensais a partir de ${formatPeriod(a.startPeriod)}`}
+									.
+								</p>
+								<div
+									className="h-2 overflow-hidden rounded-full bg-muted"
+									aria-hidden
+								>
+									<div
+										className="h-full bg-success"
+										style={{ width: `${percent}%` }}
+									/>
+								</div>
+								<p className="text-muted-foreground text-sm">
+									{a.paidInstallments} de {a.installments} parcela(s) paga(s) ·
+									pago {formatBRL(a.paidCents)} · falta{" "}
+									{formatBRL(a.remainingCents)}
+								</p>
+							</div>
+							{entradaOpen && a.entrada?.invoiceUrl && (
+								<a
+									href={a.entrada.invoiceUrl}
+									target="_blank"
+									rel="noreferrer"
+									className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-6 font-medium text-primary-foreground hover:bg-primary/90"
+								>
+									Pagar entrada · vence {formatDate(a.entrada.dueDate)}
 									<ExternalLink className="size-4" aria-hidden />
 								</a>
 							)}

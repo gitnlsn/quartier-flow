@@ -1,6 +1,6 @@
 "use client";
 
-import { MyCharges } from "../_components/my-charges";
+import { MyAgreements, MyCharges } from "../_components/my-charges";
 import { PageTitle } from "../_components/ui";
 import { useSelectedUnit } from "../_components/unit-context";
 
@@ -16,6 +16,7 @@ export default function MinhasCobrancasPage() {
 						: "Cobranças das unidades em que você é o responsável pelo pagamento."
 				}
 			/>
+			<MyAgreements />
 			<MyCharges />
 		</div>
 	);

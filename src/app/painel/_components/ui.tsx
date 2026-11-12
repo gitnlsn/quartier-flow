@@ -464,6 +464,8 @@ export const CHARGE_STATUS_LABEL: Record<string, string> = {
 	canceled: "Cancelada",
 	refunded: "Estornada",
 	failed: "Falhou",
+	renegotiated: "Renegociada",
+	forgiven: "Perdoada",
 };
 
 export const CHARGE_STATUS_TONE: Record<string, Tone> = {
@@ -476,6 +478,8 @@ export const CHARGE_STATUS_TONE: Record<string, Tone> = {
 	canceled: "neutral",
 	refunded: "neutral",
 	failed: "danger",
+	renegotiated: "info",
+	forgiven: "neutral",
 };
 
 export const RUN_STATUS_LABEL: Record<string, string> = {

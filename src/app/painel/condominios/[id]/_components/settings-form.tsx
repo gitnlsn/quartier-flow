@@ -4,6 +4,7 @@ import { cn } from "cn";
 import {
 	AlertTriangle,
 	ArrowRight,
+	BellRing,
 	CalendarClock,
 	Hand,
 	Percent,
@@ -15,6 +16,11 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { Switch } from "~/components/ui/switch";
 import { nextCycle } from "~/lib/billing-items";
 import { formatBRL } from "~/lib/br";
+import {
+	REMINDER_AFTER_OPTIONS,
+	REMINDER_BEFORE_OPTIONS,
+	pickReminder,
+} from "~/lib/reminders";
 import { type RouterOutputs, api } from "~/trpc/react";
 import {
 	Button,
@@ -373,6 +379,199 @@ export function SettingsForm({ condo }: { condo: Condo }) {
 			<ErrorMessage
 				message={Object.keys(errors).length ? null : errorMessage(save.error)}
 			/>
+		</form>
+	);
+}
+
+const beforeLabel = (days: number) =>
+	days === 0 ? "no dia do vencimento" : `${days} dias antes`;
+const afterLabel = (days: number) =>
+	days === 0
+		? "quando vencer"
+		: days === 1
+			? "1 dia depois"
+			: `${days} dias depois`;
+
+/** Keeps 0 and at most one other value (older settings could have two). */
+const normalize = (list: number[]) => {
+	const extra = list.filter((v) => v !== 0).at(-1);
+	return [
+		...(list.includes(0) ? [0] : []),
+		...(extra !== undefined ? [extra] : []),
+	];
+};
+
+/**
+ * Payment reminders sent by Asaas to each payer (docs/features/04). Asaas
+ * has, per side of the due date, a fixed reminder (on the day / when it
+ * becomes overdue) and one adjustable reminder: hence a switch + one choice.
+ */
+export function RemindersForm({ condo }: { condo: Condo }) {
+	const utils = api.useUtils();
+	const config = condo.billingConfig;
+	const [form, setForm] = useState({
+		before: normalize(config?.reminderBefore ?? [0, 10]),
+		after: normalize(config?.reminderAfter ?? [0, 7]),
+		email: config?.reminderEmail ?? true,
+		sms: config?.reminderSms ?? true,
+		whatsapp: config?.reminderWhatsapp ?? false,
+	});
+	const save = api.delinquency.saveReminders.useMutation({
+		onSuccess: () => utils.condominium.get.invalidate({ id: condo.id }),
+	});
+	if (!config) return null;
+
+	const anyChannel = form.email || form.sms || form.whatsapp;
+	const sorted = (values: number[], desc = false) =>
+		[...values].sort((a, b) => (desc ? b - a : a - b));
+	const summary = [
+		...sorted(form.before, true).map(beforeLabel),
+		...sorted(form.after).map(afterLabel),
+	];
+
+	const fixedSwitch = (key: "before" | "after", label: string) => (
+		<label
+			htmlFor={`reminder-${key}-0`}
+			className="flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 text-sm"
+		>
+			{label}
+			<Switch
+				id={`reminder-${key}-0`}
+				checked={form[key].includes(0)}
+				onCheckedChange={() =>
+					setForm((f) => ({ ...f, [key]: pickReminder(f[key], 0) }))
+				}
+			/>
+		</label>
+	);
+
+	const choices = (
+		key: "before" | "after",
+		options: readonly number[],
+		label: (days: number) => string,
+	) => {
+		const current = form[key].find((v) => v !== 0);
+		return (
+			<div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+				{[undefined, ...options.filter((d) => d !== 0)].map((days) => {
+					const checked = current === days;
+					return (
+						<label
+							key={`${key}-${days ?? "none"}`}
+							className={cn(
+								"flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm",
+								checked && "border-primary bg-muted/60",
+							)}
+						>
+							<input
+								type="radio"
+								name={`reminder-${key}`}
+								className="size-4"
+								checked={checked}
+								onChange={() =>
+									setForm((f) => ({
+										...f,
+										[key]: [
+											...f[key].filter((v) => v === 0),
+											...(days !== undefined ? [days] : []),
+										],
+									}))
+								}
+							/>
+							{days === undefined ? "Nenhum" : label(days)}
+						</label>
+					);
+				})}
+			</div>
+		);
+	};
+
+	const channel = (key: "email" | "sms" | "whatsapp", label: string) => (
+		<label
+			htmlFor={`reminder-${key}`}
+			className="flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 text-sm"
+		>
+			{label}
+			<Switch
+				id={`reminder-${key}`}
+				checked={form[key]}
+				onCheckedChange={(value) => setForm((f) => ({ ...f, [key]: value }))}
+			/>
+		</label>
+	);
+
+	return (
+		<form
+			className="mt-6 space-y-4"
+			onSubmit={(event: FormEvent) => {
+				event.preventDefault();
+				save.mutate({ condominiumId: condo.id, ...form });
+			}}
+		>
+			<Section
+				icon={<BellRing />}
+				title="Lembretes de pagamento"
+				description="Enviados pelo Asaas a cada responsável financeiro. Cada mensagem tem uma tarifa do Asaas, paga pela administradora."
+			>
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<p className="font-medium text-sm">Antes do vencimento</p>
+						{fixedSwitch("before", "Lembrete no dia do vencimento")}
+						<p className="text-muted-foreground text-xs">Lembrete antecipado</p>
+						{choices("before", REMINDER_BEFORE_OPTIONS, beforeLabel)}
+					</div>
+					<div className="space-y-2">
+						<p className="font-medium text-sm">Depois do vencimento</p>
+						{fixedSwitch("after", "Aviso quando a cobrança vencer")}
+						<p className="text-muted-foreground text-xs">
+							Lembrete de cobrança em atraso
+						</p>
+						{choices("after", REMINDER_AFTER_OPTIONS, afterLabel)}
+					</div>
+					<div>
+						<p className="mb-2 font-medium text-sm">Canais</p>
+						<div className="grid gap-2 sm:grid-cols-3">
+							{channel("email", "E-mail")}
+							{channel("sms", "SMS")}
+							{channel("whatsapp", "WhatsApp")}
+						</div>
+					</div>
+				</div>
+				<Preview>
+					{anyChannel && summary.length > 0 ? (
+						<p>
+							Lembretes: {summary.join(", ")}, por{" "}
+							{[
+								form.email && "e-mail",
+								form.sms && "SMS",
+								form.whatsapp && "WhatsApp",
+							]
+								.filter(Boolean)
+								.join(", ")}
+							. Ligações automáticas ficam sempre desligadas.
+						</p>
+					) : (
+						<p>Nenhum lembrete será enviado.</p>
+					)}
+					<p className="mt-1 text-muted-foreground text-xs">
+						SMS e WhatsApp só chegam a quem tem celular cadastrado no Asaas; os
+						demais recebem só e-mail. A configuração vale por pessoa no Asaas:
+						quem paga em dois condomínios recebe a configuração salva por
+						último.
+					</p>
+				</Preview>
+			</Section>
+			<div className="flex items-center justify-end gap-3">
+				{save.isSuccess && !save.isPending && (
+					<span aria-live="polite" className="text-sm text-success-foreground">
+						Salvo. Aplicando a {save.data.payers} responsável(is).
+					</span>
+				)}
+				<Button type="submit" pending={save.isPending}>
+					Salvar lembretes
+				</Button>
+			</div>
+			<ErrorMessage message={errorMessage(save.error)} />
 		</form>
 	);
 }

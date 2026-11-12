@@ -8,6 +8,7 @@ import {
 	Plus,
 	Send,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
@@ -27,6 +28,7 @@ import {
 } from "~/lib/billing-items";
 import { formatBRL, formatDate } from "~/lib/br";
 import { type RouterOutputs, api } from "~/trpc/react";
+import { type CondoModule, condoPath } from "../../../_components/condo-nav";
 import {
 	Badge,
 	Button,
@@ -46,7 +48,13 @@ import {
 } from "../../../_components/ui";
 import { ImportItems } from "./import-items";
 import { ItemForm, currentPeriod } from "./item-form";
-import { SettingsForm } from "./settings-form";
+import { RemindersForm, SettingsForm } from "./settings-form";
+
+/** Unit items created by other modules: managed there, not edited here. */
+const MANAGED_BY: Record<string, { module: CondoModule; label: string }> = {
+	agreement: { module: "inadimplencia", label: "Gerenciar em Inadimplência" },
+	reservation: { module: "reservas", label: "Gerenciar em Reservas" },
+};
 
 type Condo = RouterOutputs["condominium"]["get"];
 type Items = RouterOutputs["billing"]["items"];
@@ -386,34 +394,48 @@ function IndividualItems({
 									<TableCell className="text-right">
 										{formatBRL(item.amountCents)}
 									</TableCell>
-									{condo.canManage && (
-										<TableCell>
-											<div className="flex justify-end">
-												<Button
-													variant="ghost"
-													size="icon-sm"
-													aria-label={`Editar ${item.name}`}
-													onClick={() =>
-														setModal({ kind: "edit", itemId: item.id })
-													}
-												>
-													<Pencil aria-hidden />
-												</Button>
-												<ConfirmButton
-													title={`Remover "${item.name}" da unidade ${unit ? unitLabel(unit) : ""}?`}
-													description="O item deixa de entrar nas próximas cobranças. Cobranças já preparadas ou enviadas não mudam."
-													confirmLabel="Remover"
-													onConfirm={() =>
-														archive.mutate({
-															condominiumId: condo.id,
-															itemId: item.id,
-														})
-													}
-												>
-													Remover
-												</ConfirmButton>
-											</div>
+									{condo.canManage && MANAGED_BY[item.source] !== undefined ? (
+										<TableCell className="text-right">
+											<Link
+												href={condoPath(
+													condo.id,
+													MANAGED_BY[item.source]?.module ?? "visao",
+												)}
+												className="text-muted-foreground text-sm underline underline-offset-4 hover:text-foreground"
+											>
+												{MANAGED_BY[item.source]?.label}
+											</Link>
 										</TableCell>
+									) : (
+										condo.canManage && (
+											<TableCell>
+												<div className="flex justify-end">
+													<Button
+														variant="ghost"
+														size="icon-sm"
+														aria-label={`Editar ${item.name}`}
+														onClick={() =>
+															setModal({ kind: "edit", itemId: item.id })
+														}
+													>
+														<Pencil aria-hidden />
+													</Button>
+													<ConfirmButton
+														title={`Remover "${item.name}" da unidade ${unit ? unitLabel(unit) : ""}?`}
+														description="O item deixa de entrar nas próximas cobranças. Cobranças já preparadas ou enviadas não mudam."
+														confirmLabel="Remover"
+														onConfirm={() =>
+															archive.mutate({
+																condominiumId: condo.id,
+																itemId: item.id,
+															})
+														}
+													>
+														Remover
+													</ConfirmButton>
+												</div>
+											</TableCell>
+										)
 									)}
 								</TableRow>
 							))}
@@ -736,7 +758,10 @@ export function ChargesTab({ condo }: { condo: Condo }) {
 /** Billing settings: due day, manual/automatic sending, fine and interest. */
 export function SettingsTab({ condo }: { condo: Condo }) {
 	return condo.canManage ? (
-		<SettingsForm condo={condo} />
+		<>
+			<SettingsForm condo={condo} />
+			<RemindersForm condo={condo} />
+		</>
 	) : (
 		<Card title="Cobrança mensal">
 			<ConfigSummary condo={condo} />

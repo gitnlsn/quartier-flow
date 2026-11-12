@@ -85,3 +85,27 @@ export async function createPayment(
 		throw error;
 	}
 }
+
+/**
+ * Deletes (cancels) a payment on Asaas; triggers PAYMENT_DELETED. Not a
+ * refund: only for unpaid payments. A payment already gone counts as done.
+ */
+export async function deletePayment(paymentId: string): Promise<void> {
+	try {
+		await asaasRequest<{ deleted: boolean; id: string }>(
+			"DELETE",
+			`/payments/${encodeURIComponent(paymentId)}`,
+		);
+	} catch (error) {
+		if (error instanceof AsaasError && error.status === 404) return;
+		throw error;
+	}
+}
+
+/** Restores a payment deleted with `deletePayment` (POST /payments/{id}/restore). */
+export async function restorePayment(paymentId: string): Promise<AsaasPayment> {
+	return asaasRequest<AsaasPayment>(
+		"POST",
+		`/payments/${encodeURIComponent(paymentId)}/restore`,
+	);
+}

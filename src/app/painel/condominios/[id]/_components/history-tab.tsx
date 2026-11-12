@@ -13,6 +13,7 @@ import {
 } from "~/components/ui/table";
 import { formatPeriod } from "~/lib/billing-items";
 import { formatBRL, formatDate } from "~/lib/br";
+import { daysLate, unitLabel } from "~/lib/delinquency";
 import { type RouterInputs, type RouterOutputs, api } from "~/trpc/react";
 import {
 	Badge,
@@ -31,15 +32,7 @@ type Condo = RouterOutputs["condominium"]["get"];
 type Charge = RouterOutputs["billing"]["charges"][number];
 type StatusFilter = RouterInputs["billing"]["charges"]["status"];
 
-const unitLabel = (unit: { block: string; number: string }) =>
-	unit.block ? `${unit.block} · ${unit.number}` : unit.number;
-
 const PAID = new Set(["received", "confirmed"]);
-
-function daysLate(dueDate: Date | string) {
-	const due = new Date(dueDate).getTime();
-	return Math.max(0, Math.floor((Date.now() - due) / 86_400_000));
-}
 
 const sum = (charges: Charge[]) =>
 	charges.reduce((total, c) => total + (c.paidAmountCents ?? c.amountCents), 0);
@@ -111,6 +104,15 @@ function ChargeDetails({
 					<div>
 						<dt className="text-muted-foreground">Tarifa Asaas</dt>
 						<dd className="font-medium">{formatBRL(charge.feeCents)}</dd>
+					</div>
+				)}
+				{charge.forgivenReason && (
+					<div className="col-span-2">
+						<dt className="text-muted-foreground">
+							Perdoada
+							{charge.forgivenAt && ` em ${formatDate(charge.forgivenAt)}`}
+						</dt>
+						<dd className="font-medium">{charge.forgivenReason}</dd>
 					</div>
 				)}
 				{charge.issue && (
@@ -549,6 +551,8 @@ export function HistoryTab({ condo }: { condo: Condo }) {
 							<option value="overdue">Vencidas</option>
 							<option value="received">Pagas</option>
 							<option value="confirmed">Pagas (compensando)</option>
+							<option value="renegotiated">Renegociadas</option>
+							<option value="forgiven">Perdoadas</option>
 							<option value="skipped">Não enviadas</option>
 							<option value="failed">Com falha</option>
 							<option value="canceled">Canceladas</option>

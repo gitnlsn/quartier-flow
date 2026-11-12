@@ -8,6 +8,7 @@ import {
 } from "~/server/access";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import type { db as Db } from "~/server/db";
+import { residentAgreements } from "~/server/delinquency";
 
 async function termsOutdated(db: typeof Db, administradoraId: string) {
 	if (!(await getActivePlan(db, administradoraId))) return false;
@@ -109,4 +110,11 @@ export const portalRouter = createTRPCRouter({
 					: charge.unit.number,
 			}));
 		}),
+
+	/** Acordos the user pays (docs/features/04), of the selected unit if given. */
+	myAgreements: protectedProcedure
+		.input(z.object({ unitId: z.string().nullable() }).optional())
+		.query(({ ctx, input }) =>
+			residentAgreements(ctx.session.user.id, input?.unitId ?? null),
+		),
 });

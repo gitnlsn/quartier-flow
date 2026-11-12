@@ -5,7 +5,7 @@ import { type ReactNode, createContext, useContext, useEffect } from "react";
 
 import { type RouterOutputs, api } from "~/trpc/react";
 import { LAST_CONDO_COOKIE } from "../../../_components/condo-nav";
-import { ErrorMessage, Loading } from "../../../_components/ui";
+import { ErrorMessage, Loading, errorMessage } from "../../../_components/ui";
 
 export type Condo = RouterOutputs["condominium"]["get"];
 
@@ -29,7 +29,7 @@ export function CondoProvider({ children }: { children: ReactNode }) {
 	if (!condo.data) {
 		return (
 			<ErrorMessage
-				message={condo.error?.message ?? "Condomínio não encontrado."}
+				message={errorMessage(condo.error) ?? "Condomínio não encontrado."}
 			/>
 		);
 	}

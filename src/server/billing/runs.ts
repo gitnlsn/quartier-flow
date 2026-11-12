@@ -1,9 +1,17 @@
 import "server-only";
 
-import { itemForPeriod } from "~/lib/billing-items";
+import type { Prisma } from "@prisma/client";
+
+import { addMonths, itemForPeriod } from "~/lib/billing-items";
 import { formatBRL } from "~/lib/br";
+import { spMonth } from "~/lib/reservations";
 import { AsaasError } from "~/server/asaas/client";
 import { ensureCustomer } from "~/server/asaas/customers";
+import {
+	type ReminderSettings,
+	applyReminders,
+	reminderSettings,
+} from "~/server/asaas/notifications";
 import { createPayment } from "~/server/asaas/payments";
 import { audit } from "~/server/audit";
 import { db } from "~/server/db";
@@ -57,6 +65,149 @@ const todayUtc = () => {
 
 const unitLabel = (unit: { block: string; number: string }) =>
 	unit.block ? `${unit.block}-${unit.number}` : unit.number;
+
+/**
+ * First month whose monthly charge can still take a new item: the one after
+ * the latest run already sent, and never a month whose due date has passed
+ * (sendRun refuses those). An item starting in a month that will never be
+ * sent would silently never be billed.
+ */
+export async function nextOpenPeriod(
+	tx: Prisma.TransactionClient,
+	condominiumId: string,
+) {
+	const now = new Date();
+	const config = await tx.billingConfig.findUnique({
+		where: { condominiumId },
+		select: { dueDay: true },
+	});
+	const thisMonth = spMonth(now);
+	const pastDue =
+		config !== null && dueDateFor(thisMonth, config.dueDay) < todayUtc();
+	const current = pastDue ? addMonths(thisMonth, 1) : thisMonth;
+	const latestSent = await tx.billingRun.findFirst({
+		where: { condominiumId, status: { not: "draft" } },
+		orderBy: { period: "desc" },
+		select: { period: true },
+	});
+	const next = latestSent ? addMonths(latestSent.period, 1) : current;
+	return next > current ? next : current;
+}
+
+/** Keeps a draft monthly run in sync after a unit item was added or removed. */
+export async function refreshDraftRun(
+	condominiumId: string,
+	period: string,
+	actorUserId: string,
+) {
+	const run = await db.billingRun.findUnique({
+		where: { condominiumId_period: { condominiumId, period } },
+		select: { status: true },
+	});
+	if (run?.status !== "draft") return;
+	await prepareRun({ condominiumId, period, actorUserId }).catch((error) => {
+		console.error("[billing] draft run refresh failed", error);
+	});
+}
+
+export type SendContext = {
+	walletId: string;
+	finePercent: number;
+	interestPercent: number;
+	reminders: ReminderSettings;
+};
+
+/** Context for sending charges of a condominium, or a BillingError. */
+export async function sendContext(condominiumId: string): Promise<SendContext> {
+	const condo = await db.condominium.findUniqueOrThrow({
+		where: { id: condominiumId },
+		include: {
+			billingConfig: true,
+			administradora: { include: { payoutAccount: true } },
+		},
+	});
+	const payout = condo.administradora.payoutAccount;
+	if (!payout || payout.kycStatus !== "approved") {
+		throw new BillingError(
+			"A conta de recebimento da administradora ainda não foi aprovada pelo Asaas.",
+		);
+	}
+	const config = condo.billingConfig;
+	if (!config) throw new BillingError("Cobrança mensal não configurada.");
+	return {
+		walletId: payout.walletId,
+		finePercent: Number(config.finePercent),
+		interestPercent: Number(config.interestPercent),
+		reminders: reminderSettings(config),
+	};
+}
+
+/**
+ * Issues one draft charge on Asaas: a boleto (with Pix) split 100% (net) to
+ * the administradora wallet. Sets the charge to `pending`, or `failed` with
+ * the reason. Returns whether it was sent.
+ */
+export async function sendCharge(
+	charge: {
+		id: string;
+		payerUserId: string | null;
+		amountCents: number;
+		dueDate: Date;
+		description: string;
+		lines: { name: string; installment: string | null; amountCents: number }[];
+	},
+	ctx: SendContext,
+): Promise<boolean> {
+	try {
+		if (!charge.payerUserId) {
+			throw new BillingError("Unidade sem responsável financeiro");
+		}
+		const payer = await db.user.findUniqueOrThrow({
+			where: { id: charge.payerUserId },
+			select: { id: true, name: true, email: true, cpf: true },
+		});
+		if (!payer.cpf) throw new BillingError("Responsável financeiro sem CPF");
+		const customerId = await ensureCustomer({ ...payer, cpf: payer.cpf });
+		await applyReminders(
+			{ userId: payer.id, asaasCustomerId: customerId },
+			ctx.reminders,
+		);
+		const payment = await createPayment({
+			customerId,
+			amountCents: charge.amountCents,
+			dueDate: charge.dueDate.toISOString().slice(0, 10),
+			description: asaasDescription(charge.description, charge.lines),
+			externalReference: charge.id,
+			finePercent: ctx.finePercent,
+			interestPercent: ctx.interestPercent,
+			splitWalletId: ctx.walletId,
+		});
+		await db.charge.update({
+			where: { id: charge.id },
+			data: {
+				status: "pending",
+				issue: null,
+				asaasPaymentId: payment.id,
+				invoiceUrl: payment.invoiceUrl,
+				bankSlipUrl: payment.bankSlipUrl ?? null,
+			},
+		});
+		return true;
+	} catch (error) {
+		const message =
+			error instanceof AsaasError
+				? error.userMessage
+				: error instanceof Error
+					? error.message
+					: "Erro desconhecido";
+		console.error(`[billing] charge ${charge.id} failed`, error);
+		await db.charge.update({
+			where: { id: charge.id },
+			data: { status: "failed", issue: message },
+		});
+		return false;
+	}
+}
 
 /**
  * Builds (or rebuilds, while still a draft) the run for a period: one charge per
@@ -216,31 +367,17 @@ export async function sendRun(input: {
 }) {
 	const run = await db.billingRun.findUniqueOrThrow({
 		where: { id: input.runId },
-		include: {
-			condominium: {
-				include: {
-					billingConfig: true,
-					administradora: { include: { payoutAccount: true } },
-				},
-			},
-		},
+		include: { condominium: { select: { administradoraId: true } } },
 	});
 	if (run.status !== "draft") {
 		throw new BillingError("Esta execução já foi enviada.");
 	}
-	const payout = run.condominium.administradora.payoutAccount;
-	if (!payout || payout.kycStatus !== "approved") {
-		throw new BillingError(
-			"A conta de recebimento da administradora ainda não foi aprovada pelo Asaas.",
-		);
-	}
+	const ctx = await sendContext(run.condominiumId);
 	if (run.dueDate < todayUtc()) {
 		throw new BillingError(
 			"A data de vencimento já passou. Ajuste o dia de vencimento e prepare novamente.",
 		);
 	}
-	const config = run.condominium.billingConfig;
-	if (!config) throw new BillingError("Cobrança mensal não configurada.");
 
 	// Claim the run so two senders (cron + click) can't send it twice.
 	const claimed = await db.billingRun.updateMany({
@@ -271,48 +408,8 @@ export async function sendRun(input: {
 			skipped++;
 			continue;
 		}
-		try {
-			const payer = await db.user.findUniqueOrThrow({
-				where: { id: charge.payerUserId },
-				select: { id: true, name: true, email: true, cpf: true },
-			});
-			if (!payer.cpf) throw new BillingError("Responsável financeiro sem CPF");
-			const customerId = await ensureCustomer({ ...payer, cpf: payer.cpf });
-			const payment = await createPayment({
-				customerId,
-				amountCents: charge.amountCents,
-				dueDate: charge.dueDate.toISOString().slice(0, 10),
-				description: asaasDescription(charge.description, charge.lines),
-				externalReference: charge.id,
-				finePercent: Number(config.finePercent),
-				interestPercent: Number(config.interestPercent),
-				splitWalletId: payout.walletId,
-			});
-			await db.charge.update({
-				where: { id: charge.id },
-				data: {
-					status: "pending",
-					issue: null,
-					asaasPaymentId: payment.id,
-					invoiceUrl: payment.invoiceUrl,
-					bankSlipUrl: payment.bankSlipUrl ?? null,
-				},
-			});
-			sent++;
-		} catch (error) {
-			const message =
-				error instanceof AsaasError
-					? error.userMessage
-					: error instanceof Error
-						? error.message
-						: "Erro desconhecido";
-			console.error(`[billing] charge ${charge.id} failed`, error);
-			await db.charge.update({
-				where: { id: charge.id },
-				data: { status: "failed", issue: message },
-			});
-			failed++;
-		}
+		if (await sendCharge(charge, ctx)) sent++;
+		else failed++;
 	}
 
 	const status = failed > 0 ? "partially_failed" : "sent";
