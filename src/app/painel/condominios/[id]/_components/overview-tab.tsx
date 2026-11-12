@@ -354,8 +354,12 @@ export function OverviewTab({
 	);
 	const sindicos = condo.memberships.filter((m) => m.role === "sindico");
 
+	// Not set up yet: the to-do list matters more than a row of R$ 0,00.
+	// (never billed: no run prepared yet, or no units at all).
+	const settingUp = condo.units.length === 0 || (runs.data?.length ?? 0) === 0;
+
 	return (
-		<div className="space-y-6">
+		<div className="flex flex-col gap-6">
 			<Card
 				title={`Resumo de ${formatPeriod(thisMonth)}`}
 				description="Cobranças com vencimento neste mês, de qualquer mês de referência."
@@ -407,7 +411,10 @@ export function OverviewTab({
 				</div>
 			</Card>
 
-			<Card title="Precisa de atenção">
+			<Card
+				title={settingUp ? "Primeiros passos" : "Precisa de atenção"}
+				className={settingUp ? "order-first" : undefined}
+			>
 				{attention.length === 0 ? (
 					<p className="flex items-center gap-2 text-success-foreground">
 						<CircleCheck className="size-5 text-success" aria-hidden /> Tudo em

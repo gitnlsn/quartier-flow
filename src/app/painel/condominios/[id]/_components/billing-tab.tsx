@@ -134,8 +134,8 @@ function SharedItems({
 						<TableHeader>
 							<TableRow>
 								<TableHead>Item</TableHead>
-								<TableHead>Quando</TableHead>
-								<TableHead>Exceções</TableHead>
+								<TableHead className="hidden md:table-cell">Quando</TableHead>
+								<TableHead className="hidden md:table-cell">Exceções</TableHead>
 								<TableHead className="text-right">Valor</TableHead>
 								{condo.canManage && <TableHead className="w-0" />}
 							</TableRow>
@@ -163,8 +163,13 @@ function SharedItems({
 													{item.description}
 												</div>
 											)}
+											<div className="text-muted-foreground text-xs md:hidden">
+												{scheduleLabel(item)}
+												{item.overrides.length > 0 &&
+													` · ${item.overrides.length} com valor próprio`}
+											</div>
 										</TableCell>
-										<TableCell className="whitespace-normal text-muted-foreground text-sm">
+										<TableCell className="hidden whitespace-normal text-muted-foreground text-sm md:table-cell">
 											{scheduleLabel(item)}
 											{!applies && (
 												<div className="text-xs">
@@ -172,7 +177,7 @@ function SharedItems({
 												</div>
 											)}
 										</TableCell>
-										<TableCell className="text-muted-foreground text-sm">
+										<TableCell className="hidden text-muted-foreground text-sm md:table-cell">
 											{item.overrides.length > 0
 												? `${item.overrides.length} unidade(s) com valor próprio`
 												: "—"}
@@ -361,7 +366,7 @@ function IndividualItems({
 							<TableRow>
 								<TableHead>Unidade</TableHead>
 								<TableHead>Item</TableHead>
-								<TableHead>Quando</TableHead>
+								<TableHead className="hidden md:table-cell">Quando</TableHead>
 								<TableHead className="text-right">Valor</TableHead>
 								{condo.canManage && <TableHead className="w-0" />}
 							</TableRow>
@@ -387,8 +392,11 @@ function IndividualItems({
 												{item.description}
 											</div>
 										)}
+										<div className="text-muted-foreground text-xs md:hidden">
+											{scheduleLabel(item)}
+										</div>
 									</TableCell>
-									<TableCell className="text-muted-foreground text-sm">
+									<TableCell className="hidden text-muted-foreground text-sm md:table-cell">
 										{scheduleLabel(item)}
 									</TableCell>
 									<TableCell className="text-right">

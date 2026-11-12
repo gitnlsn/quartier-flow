@@ -183,7 +183,7 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 								</TableHead>
 								<TableHead className="text-right">Vencido</TableHead>
 								<TableHead className="text-right">Atraso</TableHead>
-								{canManage && <TableHead />}
+								{canManage && <TableHead className="hidden sm:table-cell" />}
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -224,7 +224,7 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 												</Badge>
 											</TableCell>
 											{canManage && (
-												<TableCell className="text-right">
+												<TableCell className="hidden text-right sm:table-cell">
 													{row.activeAgreement ? (
 														<Badge tone="info">Em acordo</Badge>
 													) : (
@@ -270,13 +270,26 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 																: "Sem responsável financeiro na unidade."}
 														</p>
 														{canManage && (
-															<Button
-																variant="outline"
-																size="sm"
-																onClick={() => setForgiving(row)}
-															>
-																Perdoar cobranças
-															</Button>
+															<div className="flex flex-wrap gap-2">
+																{/* Phones: the actions column is hidden. */}
+																{!row.activeAgreement && (
+																	<Button
+																		size="sm"
+																		className="sm:hidden"
+																		onClick={() => setProposing(row)}
+																	>
+																		<Handshake aria-hidden />
+																		Propor acordo
+																	</Button>
+																)}
+																<Button
+																	variant="outline"
+																	size="sm"
+																	onClick={() => setForgiving(row)}
+																>
+																	Perdoar cobranças
+																</Button>
+															</div>
 														)}
 													</div>
 												</TableCell>

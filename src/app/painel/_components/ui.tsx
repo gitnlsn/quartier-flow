@@ -107,11 +107,13 @@ export function Card({
 	return (
 		<UiCard className={className}>
 			{(title || description || action) && (
-				<CardHeader>
+				<CardHeader className="max-sm:grid-cols-1!">
 					{title && <CardTitle className="text-lg">{title}</CardTitle>}
 					{description && <CardDescription>{description}</CardDescription>}
 					{action && (
-						<CardAction className="flex flex-wrap justify-end gap-2">
+						// Phones: buttons under the title, so the description keeps
+						// the full width; wider screens: top right of the card.
+						<CardAction className="flex flex-wrap gap-2 max-sm:col-start-1 max-sm:row-span-1 max-sm:row-start-auto max-sm:mt-2 max-sm:justify-self-start sm:justify-end">
 							{action}
 						</CardAction>
 					)}

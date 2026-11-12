@@ -143,28 +143,39 @@ function buildGroups(
 			},
 		);
 	}
-	groups.push({
-		title: "Minha área",
-		header: unitPicker,
-		items: [
-			{ href: "/painel", label: "Início", icon: <Home />, exact: true },
-			{
-				href: "/painel/cobrancas",
-				label: "Minhas cobranças",
-				icon: <Receipt />,
-			},
-			// The selected unit's condominium has the reservations module on.
-			...(hasReservations
-				? [
-						{
-							href: "/painel/reservas",
-							label: "Reservar área comum",
-							icon: <CalendarDays />,
-						},
-					]
-				: []),
-		],
-	});
+	const home: NavItem = {
+		href: "/painel",
+		label: "Início",
+		icon: <Home />,
+		exact: true,
+	};
+	if (!unitPicker) {
+		// Not a resident anywhere: no "Minha área", just the home page.
+		groups.push({ items: [home] });
+	}
+	if (unitPicker)
+		groups.push({
+			title: "Minha área",
+			header: unitPicker,
+			items: [
+				home,
+				{
+					href: "/painel/cobrancas",
+					label: "Minhas cobranças",
+					icon: <Receipt />,
+				},
+				// The selected unit's condominium has the reservations module on.
+				...(hasReservations
+					? [
+							{
+								href: "/painel/reservas",
+								label: "Reservar área comum",
+								icon: <CalendarDays />,
+							},
+						]
+					: []),
+			],
+		});
 	// Not about a unit: platform invoices and help.
 	groups.push({
 		items: [
@@ -470,10 +481,51 @@ function Shell({
 			showAll={isAdmin || condos.length > 1}
 		/>
 	) : null;
-	const tabs: NavItem[] = [
-		{ href: "/painel", label: "Início", icon: <Home />, exact: true },
-		{ href: "/painel/cobrancas", label: "Cobranças", icon: <Receipt /> },
-	];
+	// Bottom tabs on phones: what each role uses every day; the rest is in
+	// "Mais". Managers get the selected condominium's main modules.
+	const managesCondo = hasCondos && activeCondoId && (isAdmin || isSindico);
+	const tabs: NavItem[] = managesCondo
+		? [
+				{
+					href: condoPath(activeCondoId),
+					label: "Condomínio",
+					icon: <LayoutDashboard />,
+					exact: true,
+				},
+				{
+					href: condoPath(activeCondoId, "cobrancas"),
+					label: "Cobranças",
+					icon: <ReceiptText />,
+				},
+				{
+					href: condoPath(activeCondoId, "inadimplencia"),
+					label: "Inadimplência",
+					icon: <AlertTriangle />,
+				},
+			]
+		: isAdmin && !adminNeedsPlan
+			? [
+					{ href: "/painel", label: "Início", icon: <Home />, exact: true },
+					{
+						href: CONDO_BASE,
+						label: "Condomínios",
+						icon: <LayoutGrid />,
+						exact: true,
+					},
+				]
+			: [
+					{ href: "/painel", label: "Início", icon: <Home />, exact: true },
+					{ href: "/painel/cobrancas", label: "Cobranças", icon: <Receipt /> },
+					...(selectedUnit?.reservationsEnabled
+						? [
+								{
+									href: "/painel/reservas",
+									label: "Reservar",
+									icon: <CalendarDays />,
+								},
+							]
+						: []),
+				];
 
 	const brand = (
 		<a href="/painel" className="block min-w-0">
@@ -511,9 +563,19 @@ function Shell({
 
 			{/* Mobile top bar: brand and, for managers, the condominium switcher */}
 			<header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-card/95 px-4 py-3 backdrop-blur md:hidden">
-				{brand}
 				{switcher ? (
-					<div className="w-1/2 max-w-56 shrink-0">{switcher}</div>
+					// The switcher needs the room: brand without the subtitle.
+					<a
+						href="/painel"
+						className="shrink-0 font-bold font-sans text-lg tracking-tight"
+					>
+						Quartier Flow
+					</a>
+				) : (
+					brand
+				)}
+				{switcher ? (
+					<div className="min-w-0 max-w-64 flex-1">{switcher}</div>
 				) : (
 					// Residents only: their unit takes the switcher's place.
 					selectedUnit && (
@@ -537,7 +599,12 @@ function Shell({
 			<nav
 				aria-label="Navegação principal"
 				className={cn(
-					"fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden",
+					"fixed inset-x-0 bottom-0 z-30 grid border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden",
+					tabs.length === 3
+						? "grid-cols-4"
+						: tabs.length === 2
+							? "grid-cols-3"
+							: "grid-cols-2",
 					focused && "hidden",
 				)}
 			>

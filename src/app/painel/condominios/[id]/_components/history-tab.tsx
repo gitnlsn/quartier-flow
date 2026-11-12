@@ -282,7 +282,47 @@ function ChargesTable({
 
 	return (
 		<>
-			<div className="overflow-x-auto rounded-lg border">
+			{/* Phones: one tappable row per charge instead of a wide table. */}
+			<ul className="divide-y rounded-lg border md:hidden">
+				{charges.map((c) => (
+					<li key={c.id}>
+						<button
+							type="button"
+							onClick={() => setSelected(c)}
+							className="flex w-full items-start justify-between gap-3 p-3 text-left active:bg-muted/60"
+							aria-label={`Detalhes da cobrança da unidade ${unitLabel(c.unit)} em ${formatPeriod(c.period)}`}
+						>
+							<span className="min-w-0 space-y-1">
+								<span className="block font-medium">
+									{unitLabel(c.unit)}
+									<span className="font-normal text-muted-foreground">
+										{" "}
+										· {formatPeriod(c.period)}
+									</span>
+								</span>
+								<span className="block truncate text-muted-foreground text-sm">
+									{c.payer ? c.payer.name || c.payer.email : "Sem responsável"}
+								</span>
+							</span>
+							<span className="flex shrink-0 flex-col items-end gap-1">
+								<span className="font-medium">
+									{formatBRL(c.paidAmountCents ?? c.amountCents)}
+								</span>
+								{c.status === "overdue" ? (
+									<span className="font-medium text-destructive text-xs">
+										{daysLate(c.dueDate)} dia(s) de atraso
+									</span>
+								) : (
+									<Badge tone={CHARGE_STATUS_TONE[c.status]}>
+										{CHARGE_STATUS_LABEL[c.status] ?? c.status}
+									</Badge>
+								)}
+							</span>
+						</button>
+					</li>
+				))}
+			</ul>
+			<div className="hidden overflow-x-auto rounded-lg border md:block">
 				<Table>
 					<TableHeader>
 						<TableRow>
