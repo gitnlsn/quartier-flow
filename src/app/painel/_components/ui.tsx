@@ -526,7 +526,11 @@ export function Modal({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
 				showCloseButton={false}
-				className={cn("app max-h-[90vh] gap-0 overflow-y-auto p-0", width)}
+				className={cn(
+					// minmax(0,1fr): wide content wraps instead of widening the dialog.
+					"app max-h-[90vh] grid-cols-[minmax(0,1fr)] gap-0 overflow-y-auto p-0",
+					width,
+				)}
 			>
 				<DialogHeader className="sticky top-0 z-10 flex-row items-start justify-between gap-4 border-b bg-popover p-5">
 					<div className="space-y-1">
@@ -541,7 +545,7 @@ export function Modal({
 						</UiButton>
 					</DialogClose>
 				</DialogHeader>
-				<div className="p-5">{children}</div>
+				<div className="min-w-0 p-5">{children}</div>
 			</DialogContent>
 		</Dialog>
 	);

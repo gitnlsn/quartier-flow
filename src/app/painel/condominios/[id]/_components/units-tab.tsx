@@ -330,8 +330,8 @@ function UnitDetails({
 							<TableHeader>
 								<TableRow>
 									<TableHead>Item</TableHead>
-									<TableHead>Tipo</TableHead>
-									<TableHead>Quando</TableHead>
+									<TableHead className="hidden sm:table-cell">Tipo</TableHead>
+									<TableHead className="hidden sm:table-cell">Quando</TableHead>
 									<TableHead className="text-right">Valor</TableHead>
 									{condo.canManage && <TableHead className="w-0" />}
 								</TableRow>
@@ -357,13 +357,17 @@ function UnitDetails({
 													{row.description}
 												</div>
 											)}
+											<div className="text-muted-foreground text-xs sm:hidden">
+												{row.kind === "shared" ? "Comum" : "Individual"} ·{" "}
+												{row.schedule}
+											</div>
 										</TableCell>
-										<TableCell>
+										<TableCell className="hidden sm:table-cell">
 											<Badge tone={row.kind === "shared" ? "info" : "warning"}>
 												{row.kind === "shared" ? "Comum" : "Individual"}
 											</Badge>
 										</TableCell>
-										<TableCell className="whitespace-normal text-muted-foreground text-xs">
+										<TableCell className="hidden whitespace-normal text-muted-foreground text-xs sm:table-cell">
 											{row.schedule}
 										</TableCell>
 										<TableCell className="text-right">
@@ -566,13 +570,19 @@ export function UnitsTab({ condo }: { condo: Condo }) {
 								<button
 									type="button"
 									onClick={() => setOpenUnitId(unit.id)}
-									className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-muted"
+									className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted sm:gap-4 sm:p-4"
 								>
 									<span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted font-semibold text-sm">
 										{unitLabel(unit)}
 									</span>
 									<span className="min-w-0 flex-1">
-										<span className="block truncate font-medium">
+										<span
+											className={
+												payer
+													? "block truncate font-medium"
+													: "block truncate font-medium text-warning-foreground sm:text-foreground"
+											}
+										>
 											{payer
 												? payer.user.name || payer.user.email
 												: "Sem responsável pelo pagamento"}
@@ -590,7 +600,12 @@ export function UnitsTab({ condo }: { condo: Condo }) {
 											{formatPeriod(period)}
 										</span>
 									</span>
-									{!payer && <Badge tone="warning">Sem pagador</Badge>}
+									{/* Phones: the name line already says it (in warning color). */}
+									{!payer && (
+										<span className="hidden sm:inline-flex">
+											<Badge tone="warning">Sem pagador</Badge>
+										</span>
+									)}
 									<ChevronRight
 										className="size-5 shrink-0 text-muted-foreground"
 										aria-hidden

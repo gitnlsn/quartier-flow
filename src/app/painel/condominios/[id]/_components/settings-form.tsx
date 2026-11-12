@@ -51,7 +51,7 @@ function Section({
 }) {
 	return (
 		<section className="rounded-xl border bg-card p-5 shadow-xs">
-			<div className={`flex gap-3 ${children ? "mb-4" : ""}`}>
+			<div className={`flex flex-wrap gap-3 ${children ? "mb-4" : ""}`}>
 				<span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted [&_svg]:size-4">
 					{icon}
 				</span>
@@ -59,7 +59,12 @@ function Section({
 					<h3 className="font-semibold">{title}</h3>
 					<p className="text-muted-foreground text-sm">{description}</p>
 				</div>
-				{action && <div className="shrink-0 self-center">{action}</div>}
+				{action && (
+					// Phones: under the text (aligned with it), not squeezing it.
+					<div className="shrink-0 self-center max-sm:w-full max-sm:pl-12">
+						{action}
+					</div>
+				)}
 			</div>
 			{children}
 		</section>

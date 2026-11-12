@@ -40,9 +40,18 @@ export function MyCharges({ onlyOpen = false }: { onlyOpen?: boolean }) {
 	});
 	if (charges.isLoading) return <Loading />;
 
-	const list = (charges.data ?? []).filter(
-		(c) => !onlyOpen || OPEN.has(c.status),
-	);
+	// What needs paying first (overdue, then due soonest), then the history.
+	const rank = (status: string) =>
+		status === "overdue" ? 0 : status === "pending" ? 1 : 2;
+	const list = (charges.data ?? [])
+		.filter((c) => !onlyOpen || OPEN.has(c.status))
+		.sort((a, b) => {
+			const byStatus = rank(a.status) - rank(b.status);
+			if (byStatus !== 0) return byStatus;
+			const ta = new Date(a.dueDate).getTime();
+			const tb = new Date(b.dueDate).getTime();
+			return rank(a.status) < 2 ? ta - tb : tb - ta;
+		});
 	if (list.length === 0) {
 		return (
 			<EmptyState
