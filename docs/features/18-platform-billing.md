@@ -114,7 +114,7 @@ model PlatformInvoice {
   fees, see 17.)
 
 ## Implementation (slice 1)
-- `Plan` catalog seeded by `scripts/seed-plans.ts` (**placeholder prices**), `AdministradoraPlan`; plan choice in onboarding and `/painel/plano` with seat count and monthly estimate.
+- `Plan` catalog seeded by the `prisma/migrations/1_seed_plans` migration (**placeholder prices**), `AdministradoraPlan`; plan choice in onboarding and `/painel/plano` with seat count and monthly estimate.
 - Plan signing with Termos de Uso acceptance in the onboarding (19); `/painel/plano` only switches plans (confirmation dialog).
 
 ## Implementation (slice 2: monthly invoices)

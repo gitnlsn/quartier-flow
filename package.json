@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "next build",
-		"db:push": "prisma db push",
+		"db:deploy": "prisma migrate deploy",
+		"db:migrate": "prisma migrate dev",
 		"db:studio": "prisma studio",
 		"dev": "next dev --turbo",
 		"dev:local": "bash scripts/dev.sh",
@@ -15,7 +16,8 @@
 		"start": "next start",
 		"typecheck": "npm run typecheck:tsc; npm run typecheck:biome",
 		"typecheck:biome": "biome check --write --unsafe .",
-		"typecheck:tsc": "tsc --noEmit"
+		"typecheck:tsc": "tsc --noEmit",
+		"vercel-build": "prisma migrate deploy && next build"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1166.0",

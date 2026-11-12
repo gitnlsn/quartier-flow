@@ -34,17 +34,23 @@ fi
 echo -e "${GREEN}Starting Postgres...${NC}"
 docker compose up -d --wait postgres
 
-# --no: never download a different Prisma version, use the project's own CLI.
-if [ -d prisma/migrations ] && [ -n "$(ls -A prisma/migrations 2>/dev/null)" ]; then
-	echo -e "${GREEN}Applying migrations...${NC}"
-	npx --no prisma migrate deploy
+# Migrations also insert reference data (plans). --no: never download a
+# different Prisma version, use the project's own CLI.
+echo -e "${GREEN}Applying migrations...${NC}"
+if ! output=$(npx --no prisma migrate deploy 2>&1); then
+	echo "$output"
+	# P3005: a database created by the old `prisma db push` flow, with no
+	# migration history. Its tables already match 0_init: mark it applied once.
+	if grep -q "P3005" <<<"$output"; then
+		echo -e "${YELLOW}Existing database without migration history: baselining 0_init...${NC}"
+		npx --no prisma migrate resolve --applied 0_init
+		npx --no prisma migrate deploy
+	else
+		exit 1
+	fi
 else
-	echo -e "${YELLOW}No migrations folder found, syncing schema with prisma db push...${NC}"
-	npx --no prisma db push
+	echo "$output"
 fi
-
-echo -e "${GREEN}Seeding plans...${NC}"
-npm run --silent script scripts/seed-plans.ts
 
 echo -e "${GREEN}Starting Next.js...${NC}"
 npm run dev

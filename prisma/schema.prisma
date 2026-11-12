@@ -11,7 +11,7 @@ datasource db {
   // Further reading:
   // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
   // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-  // Neon: pooled URL for the app, direct URL for schema changes (db push / migrate).
+  // Neon: pooled URL for the app, direct URL for migrations.
   url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL_UNPOOLED")
 }

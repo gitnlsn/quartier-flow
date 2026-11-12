@@ -28,7 +28,8 @@ npm run typecheck        # Run both TSC and Biome checks
 npm run typecheck:tsc    # TypeScript type checking only
 npm run typecheck:biome  # Biome linting and formatting
 
-npm run db:push          # Push Prisma schema to database (dev)
+npm run db:migrate       # Create + apply a migration after editing schema.prisma (local DB only)
+npm run db:deploy        # Apply pending migrations (Vercel runs this in vercel-build)
 npm run db:studio        # Open Prisma Studio GUI
 npm run script           # Run scripts with env vars: npm run script path/to/script.ts
 ```
@@ -58,7 +59,9 @@ Copy `.env.example` to `.env` and configure:
 **Database (Prisma):**
 - `prisma/schema.prisma` - Single source of truth for database schema
 - Models: `User`, `Account`, `Session`, `Newsletter` (+ NextAuth tables)
-- After schema changes: `npm run db:push` (dev) or create migration (prod)
+- Schema changes go through Prisma Migrate (`prisma/migrations/`, baseline `0_init`): edit the schema, run `npm run db:migrate -- --name <change>` against the local Docker DB (`npm run dev:local`), commit the migration. Never `prisma db push` against Neon
+- Reference data every environment needs (e.g. the `Plan` catalog in `1_seed_plans`) is inserted by SQL migrations, create-only (`ON CONFLICT DO NOTHING`); change it with a new migration
+- Deploys: `vercel-build` runs `prisma migrate deploy` before `next build`
 
 **Authentication:**
 - `src/server/auth/config.ts` - NextAuth configuration
