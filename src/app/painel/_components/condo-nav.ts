@@ -12,6 +12,8 @@ export type CondoModule =
 	| "acompanhamento"
 	| "historico"
 	| "despesas"
+	| "reservas"
+	| "areas"
 	| "unidades"
 	| "config";
 
@@ -21,6 +23,8 @@ const SUFFIX: Record<CondoModule, string> = {
 	acompanhamento: "/cobrancas/acompanhamento",
 	historico: "/cobrancas/historico",
 	despesas: "/despesas",
+	reservas: "/reservas",
+	areas: "/reservas/areas",
 	unidades: "/unidades",
 	config: "/configuracoes",
 };
@@ -62,6 +66,9 @@ export function switchPath(pathname: string, condominiumId: string) {
 	if (module === "cobrancas") {
 		const keep = sub === "acompanhamento" || sub === "historico";
 		return `${CONDO_BASE}/${condominiumId}/cobrancas${keep ? `/${sub}` : ""}`;
+	}
+	if (module === "reservas") {
+		return `${CONDO_BASE}/${condominiumId}/reservas${sub === "areas" ? "/areas" : ""}`;
 	}
 	return `${CONDO_BASE}/${condominiumId}${module ? `/${module}` : ""}`;
 }

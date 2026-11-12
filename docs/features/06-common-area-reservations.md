@@ -1,6 +1,6 @@
 # 06 — Common Area Reservations
 
-**Status:** Proposed · **Phase:** MVP · **Depends on:** 02, 04 (03 if fees apply)
+**Status:** Implemented slice 1 (Nov/2026) · **Phase:** MVP · **Depends on:** 02, 04 (03 if fees apply)
 **Paid add-on:** monthly fee charged to the administradora when enabled (18).
 
 ## Summary
@@ -30,6 +30,40 @@ following rules the síndico defines. Staff are notified to prepare the space.
    deletes the unpaid payment or refunds a paid one on Asaas (17).
 6. Guest list per booking (feeds 10 visitor control).
 7. Notifications to staff and resident (16); post-use inspection checklist.
+
+## Implemented (slice 1, Nov/2026)
+- **Switch:** `Condominium.reservationsEnabled`, turned on/off in the Reservas module.
+  Not billed yet; the add-on price comes with platform billing add-ons (18).
+- **Who manages:** administradora admins **and the condominium's síndicos** (the first
+  write permission for síndicos; `assertCanManageReservations` in
+  `src/server/reservations.ts`). Residents book for their own unit(s).
+- **Areas** (`CommonArea`): name, rules text, capacity, fee, full day or hourly (opening
+  hours, max hours), min/max advance, per-unit monthly limit, resident cancel deadline,
+  approval required, delinquency block, weekdays it's closed every week.
+- **One-off closures** (`AreaBlock`): "Bloquear datas" on the Reservas page, for one area
+  or all, a date range and a reason residents see on the calendar. Kept out of the area
+  settings on purpose: a date list there goes stale and the síndico would have to clean
+  it up; blocks in the past simply stop mattering. Refused while active bookings fall in
+  the range (cancel them first, so residents are told).
+- **Bookings** (`Reservation`): `pending` (awaiting approval) and `confirmed` hold the slot;
+  `rejected` / `canceled` free it; a past confirmed one shows as "Realizada". Double
+  booking is prevented by a `SELECT … FOR UPDATE` on the area row inside the booking
+  transaction. Guest names are stored per booking (for 10).
+- **Fee:** charged on the monthly charge **after the latest one already sent** (or the
+  current month, if later), as a one-off `UnitBillingItem` (`source: "reservation"`),
+  created when the booking is confirmed. A
+  draft run of that month is rebuilt. Canceling/rejecting archives the item while its
+  month is unsent; if already sent, the fee stays and the manager is told to refund it.
+- **Delinquency:** until 04 ships `isDelinquent`, a unit is delinquent when it has a
+  charge with status `overdue`.
+- **Time:** stored in UTC, computed in São Paulo time (fixed UTC-3) by
+  `src/lib/reservations.ts`, shared by server and calendar.
+- **Screens:** `/painel/condominios/[id]/reservas` (bookings: approve, reject, cancel) and
+  `…/reservas/areas` (areas and rules); `/painel/reservas` for residents (areas, month
+  calendar, booking, "Minhas reservas", cancel within the deadline).
+
+**Not yet:** photos, staff role and notifications (16), post-use inspection checklist,
+managers booking on behalf of a unit, fee via a separate Pix charge.
 
 ## Data model (draft)
 ```prisma
@@ -65,7 +99,8 @@ model Reservation {
 - Store times in UTC; display in America/Sao_Paulo.
 
 ## Open questions
-- Is the fee charged at booking or added to the next monthly fee?
+- ~~Is the fee charged at booking or added to the next monthly fee?~~ Next monthly fee
+  (slice 1). Revisit a Pix-at-booking option for non-residents or high fees.
 
 ## Market references
 - Noknox shows available dates, photos and prices for in-app booking

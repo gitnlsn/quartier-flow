@@ -15,15 +15,17 @@ Visão geral                    /painel/condominios/[id]
 FINANCEIRO
   Cobranças                    …/cobrancas  (Mês atual · Acompanhamento · Histórico)
   Despesas                     …/despesas
+OPERAÇÃO
+  Reservas                     …/reservas  (Reservas · Áreas e regras)
 CADASTRO
   Unidades e moradores         …/unidades
   Configurações                …/configuracoes
-MINHA ÁREA                     Início, Minhas cobranças
+MINHA ÁREA                     Início, Minhas cobranças, Reservar área comum
 ADMINISTRADORA                 Todos os condomínios, Plano, Conta de recebimento
 ```
 Planned modules slot into the groups: Financeiro (Inadimplência 04, Balancetes 05),
 Comunidade (Avisos 07, Assembleias 12, Documentos 13), Operação (Chamados 08,
-Ocorrências 09, Portaria 10/11, Reservas 06 when the add-on is active, Fornecedores 14,
+Ocorrências 09, Portaria 10/11, Fornecedores 14,
 Agenda 15).
 
 ## Rules

@@ -172,14 +172,16 @@ model AdministradoraMember {
 }
 
 model Condominium {
-  id               String         @id @default(cuid())
-  administradoraId String
-  administradora   Administradora @relation(fields: [administradoraId], references: [id], onDelete: Cascade)
-  name             String
-  cnpj             String?
-  address          String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                  String         @id @default(cuid())
+  administradoraId    String
+  administradora      Administradora @relation(fields: [administradoraId], references: [id], onDelete: Cascade)
+  name                String
+  cnpj                String?
+  address             String?
+  /// Common area reservations module switched on (docs/features/06)
+  reservationsEnabled Boolean        @default(false)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   units         Unit[]
   memberships   Membership[]
@@ -189,6 +191,9 @@ model Condominium {
   billingItems  BillingItem[]
   unitItems     UnitBillingItem[]
   expenses      Expense[]
+  commonAreas   CommonArea[]
+  reservations  Reservation[]
+  areaBlocks    AreaBlock[]
 
   @@index([administradoraId])
 }
@@ -206,6 +211,7 @@ model Unit {
   charges       Charge[]
   itemOverrides BillingItemOverride[]
   items         UnitBillingItem[]
+  reservations  Reservation[]
 
   @@unique([condominiumId, block, number])
   @@index([condominiumId])
@@ -489,10 +495,12 @@ model UnitBillingItem {
   recurrence    String // monthly | installments | once
   startPeriod   String
   installments  Int?
-  source        String      @default("manual") // manual | import
+  source        String      @default("manual") // manual | import | reservation
   archivedAt    DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+
+  reservation Reservation?
 
   @@index([unitId])
   @@index([condominiumId, startPeriod])
@@ -545,4 +553,96 @@ model Expense {
   updatedAt DateTime @updatedAt
 
   @@index([condominiumId, paidAt])
+}
+
+// ---------------------------------------------------------------------------
+// Common area reservations (docs/features/06)
+// Times are stored in UTC and shown in America/Sao_Paulo (src/lib/reservations.ts).
+// ---------------------------------------------------------------------------
+
+/**
+ * A bookable space (party room, barbecue area, court) and the rules the
+ * síndico sets once; src/server/reservations.ts enforces them.
+ */
+model CommonArea {
+  id                 String      @id @default(cuid())
+  condominiumId      String
+  condominium        Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  name               String
+  description        String? // rules text shown to residents
+  capacity           Int?
+  feeCents           Int         @default(0) // added to the unit's next monthly charge
+  slotType           String      @default("day") // day | hour
+  opensHour          Int         @default(8) // hourly areas: first bookable hour (0-23)
+  closesHour         Int         @default(22) // hourly areas: closing hour (1-24)
+  maxHours           Int? // hourly areas: longest booking
+  requiresApproval   Boolean     @default(false)
+  minAdvanceHours    Int         @default(24)
+  maxAdvanceDays     Int         @default(90)
+  maxPerUnitPerMonth Int?
+  cancelUntilHours   Int         @default(48) // residents cancel up to N hours before
+  blockDelinquent    Boolean     @default(true) // units with overdue charges can't book
+  closedWeekdays     Int[] // recurring closure: 0 = Sunday … 6 = Saturday
+  archivedAt         DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  reservations Reservation[]
+  blocks       AreaBlock[]
+
+  @@index([condominiumId])
+}
+
+/**
+ * One-off closure (maintenance, a condominium event) of one area or, with no
+ * area, all of them. Created from the Reservas page; past blocks simply stop
+ * mattering, so nobody has to clean them up.
+ */
+model AreaBlock {
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  areaId        String? // null = every area of the condominium
+  area          CommonArea? @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  startsOn      String // YYYY-MM-DD (São Paulo), inclusive
+  endsOn        String // YYYY-MM-DD (São Paulo), inclusive
+  reason        String?
+  createdById   String?
+  createdAt     DateTime    @default(now())
+
+  @@index([condominiumId, endsOn])
+}
+
+/**
+ * A booking of an area by a unit. Pending and confirmed bookings hold the
+ * slot; rejected and canceled ones free it. A past confirmed booking is shown
+ * as "Realizada" (no stored status change).
+ */
+model Reservation {
+  id            String           @id @default(cuid())
+  condominiumId String
+  condominium   Condominium      @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  areaId        String
+  area          CommonArea       @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  unitId        String
+  unit          Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  requestedById String?
+  startsAt      DateTime
+  endsAt        DateTime
+  status        String           @default("pending") // pending | confirmed | rejected | canceled
+  guestNames    String[]
+  notes         String?
+  feeCents      Int              @default(0) // area fee when booked (snapshot)
+  /// One-off item on the unit's monthly charge with the fee
+  billingItemId String?          @unique
+  billingItem   UnitBillingItem? @relation(fields: [billingItemId], references: [id], onDelete: SetNull)
+  decidedById   String? // approved, rejected or canceled by
+  decidedAt     DateTime?
+  decisionNote  String? // reason for rejecting or canceling
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([areaId, startsAt])
+  @@index([condominiumId, startsAt])
+  @@index([unitId])
 }

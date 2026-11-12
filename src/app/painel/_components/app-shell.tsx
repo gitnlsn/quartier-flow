@@ -3,6 +3,7 @@
 import { cn } from "cn";
 import {
 	Building2,
+	CalendarDays,
 	Check,
 	ChevronsUpDown,
 	ClipboardCheck,
@@ -64,6 +65,7 @@ function buildGroups(
 	isAdmin: boolean,
 	adminNeedsPlan: boolean,
 	hasPlatformBilling: boolean,
+	hasReservations: boolean,
 	condoId: string | null,
 ): NavGroup[] {
 	const groups: NavGroup[] = [];
@@ -95,6 +97,16 @@ function buildGroups(
 				],
 			},
 			{
+				title: "Operação",
+				items: [
+					{
+						href: condoPath(condoId, "reservas"),
+						label: "Reservas",
+						icon: <CalendarDays />,
+					},
+				],
+			},
+			{
 				title: "Cadastro",
 				items: [
 					{
@@ -120,6 +132,16 @@ function buildGroups(
 				label: "Minhas cobranças",
 				icon: <Receipt />,
 			},
+			// Residents of a condominium with the reservations module on.
+			...(hasReservations
+				? [
+						{
+							href: "/painel/reservas",
+							label: "Reservar área comum",
+							icon: <CalendarDays />,
+						},
+					]
+				: []),
 			// Kept after the administradora is closed: last invoices stay payable.
 			...(hasPlatformBilling
 				? [
@@ -355,6 +377,7 @@ export function AppShell({
 	adminNeedsPlan,
 	hasPlatformBilling,
 	isSindico,
+	hasReservations,
 	condos,
 	lastCondoId,
 }: {
@@ -367,6 +390,8 @@ export function AppShell({
 	/** Admin(ned) an administradora that signed a plan (docs/features/18). */
 	hasPlatformBilling: boolean;
 	isSindico: boolean;
+	/** Resident of a condominium with reservations on (docs/features/06). */
+	hasReservations: boolean;
 	/** Condominiums the user can open (managed, síndico, or closed archive). */
 	condos: CondoOption[];
 	lastCondoId: string | null;
@@ -386,6 +411,7 @@ export function AppShell({
 		isAdmin,
 		adminNeedsPlan,
 		hasPlatformBilling,
+		hasReservations,
 		hasCondos ? activeCondoId : null,
 	);
 	const switcher = hasCondos ? (

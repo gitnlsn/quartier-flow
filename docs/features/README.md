@@ -26,7 +26,7 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 | [03](03-billing-and-payments.md) | Billing & payments (boleto / Pix via Asaas) | MVP (foundation) — implemented slice 1 | 01, 02, 17 |
 | [04](04-delinquency-management.md) | Delinquency management | MVP | 03, 17 |
 | [05](05-financial-transparency.md) | Financial transparency & dashboard | MVP | 03, 17 |
-| [06](06-common-area-reservations.md) | Common area reservations (paid add-on) | MVP | 02, 04, 18 |
+| [06](06-common-area-reservations.md) | Common area reservations (paid add-on) | MVP — implemented slice 1 | 02, 04, 18 |
 | [07](07-announcements-board.md) | Announcements board | MVP | 02, 16 |
 | [08](08-maintenance-requests.md) | Maintenance requests | MVP | 02, 16 |
 | [09](09-occurrence-log.md) | Occurrence log | Post-MVP | 02 |

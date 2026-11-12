@@ -31,7 +31,7 @@ export default async function PainelLayout({
 	if (!session) redirect("/entrar");
 
 	const access = await getAccess(db, session.user.id);
-	const [administradora, activePlan, condos, billing, cookieStore] =
+	const [administradora, activePlan, condos, billing, cookieStore, bookable] =
 		await Promise.all([
 			access.administradoraId
 				? db.administradora.findUnique({
@@ -51,6 +51,21 @@ export default async function PainelLayout({
 			}),
 			billingAdministradoras(db, session.user.id),
 			cookies(),
+			// Lives in a condominium where residents can book common areas.
+			access.isResident
+				? db.membership.count({
+						where: {
+							userId: session.user.id,
+							role: "resident",
+							endedAt: null,
+							unitId: { not: null },
+							condominium: {
+								reservationsEnabled: true,
+								administradora: { closedAt: null },
+							},
+						},
+					})
+				: 0,
 		]);
 
 	return (
@@ -62,6 +77,7 @@ export default async function PainelLayout({
 			adminNeedsPlan={Boolean(access.administradoraId) && !activePlan}
 			hasPlatformBilling={billing.length > 0}
 			isSindico={access.sindicoCondominiumIds.length > 0}
+			hasReservations={bookable > 0}
 			condos={condos}
 			lastCondoId={cookieStore.get(LAST_CONDO_COOKIE)?.value ?? null}
 		>
