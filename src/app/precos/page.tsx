@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
 	title: "Preços - Quartier Flow | Gestão de Condomínios",
 	description:
-		"Planos e preços do Quartier Flow: mensalidade por morador e síndico ativos, sem taxa de adesão. Early adopters têm acesso prioritário e treinamento personalizado.",
+		"Planos e preços do Quartier Flow: mensalidade por morador e síndico ativos, sem taxa de adesão, com cadastro guiado e treinamento.",
 	keywords: [
 		"preços gestão de condomínios",
 		"planos quartier flow",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		title: "Preços - Quartier Flow",
 		description:
-			"Planos e preços do Quartier Flow com benefícios exclusivos para early adopters.",
+			"Planos e preços do Quartier Flow: mensalidade por morador e síndico ativos, sem taxa de adesão.",
 		type: "website",
 		url: "https://quartierflow.com/precos",
 	},
@@ -92,7 +92,7 @@ export default function PrecosPage() {
 					<Container size="lg" className="text-center">
 						<div className="mb-4 inline-flex items-center gap-2 border border-white bg-white px-4 py-2 font-bold text-black text-sm">
 							<span>⚡</span>
-							<span>EARLY ADOPTERS: ACESSO PRIORITÁRIO</span>
+							<span>SEM TAXA DE ADESÃO</span>
 						</div>
 						<h1 className="mb-6 font-extrabold text-4xl leading-tight md:text-6xl lg:text-7xl">
 							Preços Transparentes
@@ -154,11 +154,11 @@ export default function PrecosPage() {
 									</ul>
 
 									<Button
-										href="/#contact"
+										href="/cadastro"
 										variant={plan.highlighted ? "primary" : "secondary"}
 										className="w-full"
 									>
-										Entrar na Lista →
+										Começar Agora →
 									</Button>
 								</Card>
 							))}
@@ -166,20 +166,21 @@ export default function PrecosPage() {
 					</Container>
 				</Section>
 
-				{/* Early Adopter Benefits */}
+				{/* Onboarding support */}
 				<Section>
 					<Container size="lg">
 						<SectionHeader
-							title="Benefícios Exclusivos para Early Adopters"
-							subtitle="Quem se cadastrar agora garante as melhores condições"
+							title="Você Não Começa Sozinho"
+							subtitle="Implantação e treinamento inclusos, sem custo adicional"
 						/>
 
 						<div className="grid gap-6 md:grid-cols-2">
 							<Card className="p-6">
 								<div className="mb-4 text-4xl">⚡</div>
-								<h3 className="mb-2 font-bold text-xl">Acesso Prioritário</h3>
+								<h3 className="mb-2 font-bold text-xl">Cadastro Guiado</h3>
 								<p className="text-gray-300 text-sm">
-									Seja um dos primeiros a usar a plataforma quando lançarmos
+									Administradora, plano e conta de recebimento passo a passo,
+									com vídeos na Central de ajuda
 								</p>
 							</Card>
 
@@ -207,12 +208,12 @@ export default function PrecosPage() {
 						<div className="space-y-6">
 							<div className="border border-gray-800 bg-black/50 p-6 backdrop-blur-sm">
 								<h3 className="mb-2 font-bold text-lg">
-									Quando os preços serão divulgados?
+									Como sei quanto vou pagar?
 								</h3>
 								<p className="text-gray-300 text-sm">
-									Os valores oficiais serão divulgados próximo ao lançamento do
-									beta (Maio 2025). Garantimos que early adopters terão as
-									melhores condições.
+									Antes de assinar, o cadastro mostra o plano e o valor pelos
+									moradores e síndicos ativos. Nada é cobrado antes da sua
+									confirmação.
 								</p>
 							</div>
 
@@ -233,8 +234,8 @@ export default function PrecosPage() {
 									Há taxa de setup ou implantação?
 								</h3>
 								<p className="text-gray-300 text-sm">
-									Não! Para early adopters, a implantação e treinamento estão
-									inclusos sem custo adicional.
+									Não. A implantação e o treinamento estão inclusos, sem custo
+									adicional.
 								</p>
 							</div>
 
@@ -253,8 +254,7 @@ export default function PrecosPage() {
 									Quais formas de pagamento são aceitas?
 								</h3>
 								<p className="text-gray-300 text-sm">
-									Aceitaremos boleto bancário, PIX, cartão de crédito e débito
-									automático. Mais detalhes serão divulgados em breve.
+									A fatura mensal do Quartier Flow é paga por boleto ou Pix.
 								</p>
 							</div>
 						</div>
@@ -266,14 +266,14 @@ export default function PrecosPage() {
 					<Container size="lg" className="text-center">
 						<div className="border-2 border-white bg-black/50 p-8 backdrop-blur-sm md:p-12">
 							<h2 className="mb-4 font-bold text-3xl md:text-4xl">
-								Garanta os Benefícios de Early Adopter
+								Comece Hoje
 							</h2>
 							<p className="mb-6 text-gray-400 text-lg">
-								Cadastre-se na lista de espera e seja avisado assim que os
-								planos oficiais forem lançados
+								Você escolhe o plano durante o cadastro e nada é contratado
+								antes da sua confirmação
 							</p>
-							<Button href="/#contact" size="lg">
-								Quero Fazer Parte →
+							<Button href="/cadastro" size="lg">
+								Criar Conta →
 							</Button>
 						</div>
 					</Container>

@@ -23,15 +23,15 @@ const faqs = [
 	},
 	{
 		category: "general",
-		question: "Como funciona o early access (acesso antecipado)?",
+		question: "Como começo a usar?",
 		answer:
-			"Ao se cadastrar na lista de espera, você garante acesso prioritário quando lançarmos a plataforma. Os primeiros usuários terão benefícios exclusivos, incluindo preços especiais e acesso a funcionalidades premium por tempo determinado.",
+			"Clique em “Criar conta” e entre com Google ou com um link por email. Depois do primeiro acesso, o cadastro guia você pela administradora, o plano e a conta de recebimento. Nada é contratado antes da sua confirmação.",
 	},
 	{
 		category: "general",
-		question: "Quando a plataforma estará disponível?",
+		question: "A plataforma já está disponível?",
 		answer:
-			"Estamos em fase final de desenvolvimento e testes. A previsão é lançar a versão beta nos próximos meses. Todos da lista de espera serão notificados com antecedência e terão prioridade no acesso.",
+			"Sim, em beta: cobrança mensal com boleto e Pix, acompanhamento de pagamentos, inadimplência e acordos, reservas de áreas comuns, despesas e a área do morador já funcionam. Novos módulos chegam aos poucos.",
 	},
 	{
 		category: "features",

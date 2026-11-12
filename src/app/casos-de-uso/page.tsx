@@ -322,11 +322,10 @@ export default function CasosDeUsoPage() {
 								Pronto para transformar seu condomínio?
 							</h2>
 							<p className="mb-6 text-gray-400">
-								Cadastre-se na lista de espera e seja um dos primeiros a
-								experimentar a revolução na gestão condominial
+								Crie sua conta e comece hoje: o cadastro guia você passo a passo
 							</p>
-							<Button href="/#contact" size="lg">
-								Quero Fazer Parte →
+							<Button href="/cadastro" size="lg">
+								Criar Conta →
 							</Button>
 						</div>
 					</Container>

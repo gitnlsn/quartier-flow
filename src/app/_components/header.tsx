@@ -35,7 +35,7 @@ export function Header() {
 				{/* Desktop Navigation */}
 				<div className="hidden items-center gap-6 md:flex">
 					<button
-						onClick={() => scrollToSection("features")}
+						onClick={() => scrollToSection("disponivel")}
 						className="text-gray-300 text-sm transition-colors hover:text-white"
 						type="button"
 					>
@@ -74,13 +74,18 @@ export function Header() {
 					>
 						Ajuda
 					</a>
-					<button
-						onClick={() => scrollToSection("contact")}
+					<a
+						href="/entrar"
+						className="border border-white px-4 py-2 font-bold text-sm text-white transition-all hover:bg-white hover:text-black"
+					>
+						Entrar
+					</a>
+					<a
+						href="/contato"
 						className="border border-white bg-white px-4 py-2 font-bold text-black text-sm transition-all hover:bg-gray-100"
-						type="button"
 					>
 						Fale Conosco
-					</button>
+					</a>
 				</div>
 
 				{/* Mobile Menu Button */}
@@ -123,7 +128,7 @@ export function Header() {
 				<div className="border-gray-800 border-t bg-black md:hidden">
 					<div className="flex flex-col gap-2 px-2 py-2">
 						<button
-							onClick={() => scrollToSection("features")}
+							onClick={() => scrollToSection("disponivel")}
 							className="px-4 py-2 text-left text-gray-300 text-sm transition-colors hover:text-white"
 							type="button"
 						>
@@ -162,13 +167,18 @@ export function Header() {
 						>
 							Ajuda
 						</a>
-						<button
-							onClick={() => scrollToSection("contact")}
-							className="mx-4 border border-white bg-white px-4 py-2 font-bold text-black text-sm transition-all hover:bg-gray-100"
-							type="button"
+						<a
+							href="/entrar"
+							className="mx-4 border border-white px-4 py-2 text-center font-bold text-sm text-white transition-all hover:bg-white hover:text-black"
+						>
+							Entrar
+						</a>
+						<a
+							href="/contato"
+							className="mx-4 border border-white bg-white px-4 py-2 text-center font-bold text-black text-sm transition-all hover:bg-gray-100"
 						>
 							Fale Conosco
-						</button>
+						</a>
 					</div>
 				</div>
 			)}

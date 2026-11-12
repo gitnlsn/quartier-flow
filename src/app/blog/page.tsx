@@ -151,17 +151,17 @@ export default function BlogIndexPage() {
 					<Container size="lg" className="text-center">
 						<div className="border border-gray-800 bg-black/50 p-8 backdrop-blur-sm md:p-12">
 							<h2 className="mb-4 font-bold text-2xl md:text-3xl">
-								Quer receber novos artigos por e-mail?
+								Coloque estas ideias em prática
 							</h2>
 							<p className="mb-6 text-gray-400">
-								Cadastre-se na lista de espera e receba conteúdo exclusivo sobre
-								gestão condominial
+								Cobrança, inadimplência e reservas no mesmo lugar. Crie sua
+								conta e comece hoje.
 							</p>
 							<Link
-								href="/#contact"
+								href="/cadastro"
 								className="inline-block border-2 border-white bg-white px-6 py-3 font-bold text-black transition-all hover:bg-black hover:text-white md:px-8 md:py-4"
 							>
-								Cadastrar na Lista →
+								Criar Conta →
 							</Link>
 						</div>
 					</Container>

@@ -9,34 +9,34 @@ interface FAQItem {
 
 const faqs: FAQItem[] = [
 	{
-		question: "Quando o Quartier Flow será lançado?",
+		question: "O Quartier Flow já está funcionando?",
 		answer:
-			"Estamos trabalhando para lançar a versão beta em Maio de 2025, com lançamento oficial previsto para Julho de 2025. Quem estiver na lista de espera terá acesso prioritário e será avisado primeiro.",
+			"Sim, em beta: cobrança mensal com boleto e Pix, acompanhamento de pagamentos, inadimplência e acordos, reservas de áreas comuns, despesas e a área do morador já estão disponíveis. Novos módulos chegam aos poucos e aparecem para quem já usa, sem custo de implantação.",
 	},
 	{
-		question: "Posso participar do período beta?",
+		question: "Como começo a usar?",
 		answer:
-			"Sim! Cadastrando-se na lista de espera agora, você garante prioridade para participar do beta fechado. Terá acesso antecipado às funcionalidades, poderá dar feedback direto para nossa equipe e receberá benefícios exclusivos.",
+			"Clique em “Criar conta” e entre com Google ou com um link por email. Depois do primeiro acesso, o cadastro guia você pela administradora, o plano e a conta de recebimento. Nada é contratado antes da sua confirmação.",
 	},
 	{
-		question: "Quais benefícios ganho ao me cadastrar agora?",
+		question: "Tenho ajuda para começar?",
 		answer:
-			"Early adopters ganham acesso prioritário ao beta, treinamento personalizado e influência direta no desenvolvimento do produto.",
+			"Sim. O cadastro é guiado passo a passo, a Central de ajuda mostra cada tela em vídeos curtos e nossa equipe faz o treinamento com você. Sugestões de quem usa ajudam a decidir os próximos módulos.",
 	},
 	{
-		question: "Qual será o preço da plataforma?",
+		question: "Quanto custa?",
 		answer:
-			"Os planos serão personalizados de acordo com o tamanho do condomínio (número de unidades) e funcionalidades desejadas. Valores oficiais serão divulgados próximo ao lançamento, mas garantimos que early adopters terão as melhores condições.",
+			"Os planos estão na página de Preços, e o valor aparece antes de você assinar, durante o cadastro. Nada é cobrado antes da sua confirmação.",
 	},
 	{
 		question: "O sistema funcionará em dispositivos móveis?",
 		answer:
-			"Sim! A plataforma web será totalmente responsiva desde o início. Aplicativos nativos para iOS e Android estão previstos para a Fase 4 (lançamento oficial em Julho/2025).",
+			"Sim! A plataforma funciona no navegador do celular, e o morador paga, acompanha cobranças e reserva áreas comuns pelo telefone. Aplicativos nativos estão nos próximos passos.",
 	},
 	{
-		question: "Como posso acompanhar o desenvolvimento?",
+		question: "Como fico sabendo das novidades?",
 		answer:
-			"Quem se cadastrar na lista de espera receberá updates mensais por email com progresso, novidades e sneak peeks das funcionalidades. Também compartilharemos conteúdo no nosso blog.",
+			"Os módulos novos aparecem em “Já disponível” e o que está por vir em “Próximos passos”, aqui na página. Quem já usa vê as novidades direto no painel, e publicamos conteúdo no blog.",
 	},
 	{
 		question: "Os dados estarão seguros?",
@@ -106,7 +106,7 @@ export function FAQ() {
 					<p className="text-gray-400 text-sm md:text-base">
 						Não encontrou sua resposta?{" "}
 						<a
-							href="#contact"
+							href="/contato"
 							className="text-white underline transition-colors hover:text-gray-300"
 						>
 							Fale conosco

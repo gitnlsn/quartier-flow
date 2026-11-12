@@ -76,9 +76,9 @@ export function HowItWorks() {
 				{/* CTA */}
 				<div className="mt-8 text-center md:mt-16">
 					<p className="mb-4 text-gray-400 text-sm md:text-base">
-						Quer fazer parte desde o início?
+						Pronto para simplificar a gestão do seu condomínio?
 					</p>
-					<Button href="#contact">Entrar na Lista de Espera →</Button>
+					<Button href="/cadastro">Criar Conta →</Button>
 				</div>
 			</Container>
 		</Section>

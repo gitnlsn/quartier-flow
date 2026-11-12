@@ -131,15 +131,15 @@ export default function ContatoPage() {
 							</a>
 
 							<a
-								href="/#contact"
+								href="/cadastro"
 								className="group border border-gray-800 bg-black/50 p-6 backdrop-blur-sm transition-all hover:border-white"
 							>
 								<div className="mb-4 text-4xl">🚀</div>
 								<h3 className="mb-2 font-bold text-xl transition-colors group-hover:text-gray-300">
-									Lista de Espera
+									Criar Conta
 								</h3>
 								<p className="text-gray-400 text-sm">
-									Cadastre-se para acesso antecipado
+									Comece a usar com cadastro guiado
 								</p>
 							</a>
 						</div>

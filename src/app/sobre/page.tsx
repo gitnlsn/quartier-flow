@@ -303,11 +303,10 @@ export default function SobrePage() {
 								Junte-se à revolução da gestão condominial
 							</h2>
 							<p className="mb-6 text-gray-400">
-								Cadastre-se na lista de espera e seja um dos primeiros a
-								experimentar o Quartier Flow
+								Crie sua conta e comece a usar o Quartier Flow no seu condomínio
 							</p>
-							<Button href="/#contact" size="lg">
-								Quero Fazer Parte →
+							<Button href="/cadastro" size="lg">
+								Criar Conta →
 							</Button>
 						</div>
 					</Container>

@@ -9,7 +9,7 @@ import { StructuredData } from "./_components/structured-data";
 export const metadata: Metadata = {
 	title: "Quartier Flow - Gestão de Condomínios Simplificada",
 	description:
-		"Plataforma completa para gestão de condomínios com sistema de pagamentos, controle de inadimplência, comunicação com moradores e automação de processos. Cadastre-se na lista de espera.",
+		"Plataforma completa para gestão de condomínios com sistema de pagamentos, controle de inadimplência, comunicação com moradores e automação de processos. Crie sua conta.",
 	keywords: [
 		"gestão de condomínios",
 		"administração condominial",

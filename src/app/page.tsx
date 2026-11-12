@@ -1,4 +1,5 @@
 import { HydrateClient } from "~/trpc/server";
+import { AvailableNow } from "./_components/available-now";
 import { CircularText } from "./_components/circular-text";
 import { EarlyAccess } from "./_components/early-access";
 import { FAQ } from "./_components/faq";
@@ -6,9 +7,9 @@ import { FeatureCard } from "./_components/feature-card";
 import { Footer } from "./_components/footer";
 import { Header } from "./_components/header";
 import { HowItWorks } from "./_components/how-it-works";
-import { NewsletterForm } from "./_components/newsletter-form";
+import { NextSteps } from "./_components/next-steps";
 import { PillarsSection } from "./_components/pillars-section";
-import { Container, Section, SectionHeader } from "./_components/ui";
+import { Button, Container, Section, SectionHeader } from "./_components/ui";
 import { VisualSection } from "./_components/visual-section";
 
 export default async function Home() {
@@ -67,6 +68,12 @@ export default async function Home() {
 						</div>
 					</section>
 
+					{/* What already works (links to the help center) */}
+					<AvailableNow />
+
+					{/* What comes next */}
+					<NextSteps />
+
 					{/* Visual Section */}
 					<VisualSection />
 
@@ -85,15 +92,20 @@ export default async function Home() {
 					<FAQ />
 
 					{/* CTA Section */}
-					<Section id="contact">
+					<Section id="comecar">
 						<Container size="lg" className="text-center">
 							<SectionHeader
-								title="Cadastre-se na Lista de Espera"
-								subtitle="Seja avisado assim que o Quartier Flow estiver disponível e garanta os benefícios exclusivos"
+								title="Comece Agora"
+								subtitle="Crie sua conta, cadastre sua administradora e envie as primeiras cobranças. Nada é contratado antes da sua confirmação."
 								className="mb-6 md:mb-8"
 							/>
-							<div className="flex justify-center">
-								<NewsletterForm />
+							<div className="flex flex-col justify-center gap-2 sm:flex-row md:gap-4">
+								<Button href="/cadastro" size="lg">
+									Criar Conta →
+								</Button>
+								<Button href="/contato" variant="outline" size="lg">
+									Falar com a Gente
+								</Button>
 							</div>
 						</Container>
 					</Section>
