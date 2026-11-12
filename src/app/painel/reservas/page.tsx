@@ -1,7 +1,7 @@
 "use client";
 
 import { BookArea } from "../_components/book-area";
-import { PageTitle } from "../_components/ui";
+import { HelpLink, PageTitle } from "../_components/ui";
 import { useSelectedUnit } from "../_components/unit-context";
 
 export default function ReservasPage() {
@@ -15,6 +15,7 @@ export default function ReservasPage() {
 						? `Unidade ${selected.label} · ${selected.condominiumName}`
 						: "Veja os dias livres e reserve as áreas comuns."
 				}
+				actions={<HelpLink slug="reservas-de-areas-comuns" />}
 			/>
 			<BookArea />
 		</div>

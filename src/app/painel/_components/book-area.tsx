@@ -134,12 +134,15 @@ export function BookArea() {
 }
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const monthName = (month: string) =>
-	new Date(`${month}-15T12:00:00Z`).toLocaleDateString("pt-BR", {
+/** "Novembro de 2026": capitalize only the first letter (not "De"). */
+const monthName = (month: string) => {
+	const text = new Date(`${month}-15T12:00:00Z`).toLocaleDateString("pt-BR", {
 		month: "long",
 		year: "numeric",
 		timeZone: "UTC",
 	});
+	return text.charAt(0).toUpperCase() + text.slice(1);
+};
 
 function BookingForm({
 	area,
@@ -250,7 +253,7 @@ function BookingForm({
 					>
 						<ChevronLeft aria-hidden />
 					</Button>
-					<p className="font-medium capitalize">{monthName(month)}</p>
+					<p className="font-medium">{monthName(month)}</p>
 					<Button
 						variant="ghost"
 						size="icon"

@@ -28,6 +28,7 @@ import {
 	EmptyState,
 	ErrorMessage,
 	Field,
+	HelpLink,
 	Input,
 	Loading,
 	MaskedInput,
@@ -69,6 +70,7 @@ export function ReservationsFrame({ children }: { children: ReactNode }) {
 						)}
 					</span>
 				}
+				actions={<HelpLink slug="reservas-de-areas-comuns" />}
 			/>
 			{state.data && !state.data.enabled && (
 				<Card

@@ -11,6 +11,7 @@ export type HelpCategory =
 	| "administradora"
 	| "condominio"
 	| "cobrancas"
+	| "areas-comuns"
 	| "moradores";
 
 export type HelpStep = {
@@ -53,6 +54,12 @@ export const HELP_CATEGORIES: {
 		title: "Cobranças e despesas",
 		description:
 			"Itens de cobrança, envio mensal, acompanhamento e prestação de contas.",
+	},
+	{
+		id: "areas-comuns",
+		title: "Áreas comuns e reservas",
+		description:
+			"Salão de festas, churrasqueira e outras áreas: regras, reservas e aprovação.",
 	},
 	{
 		id: "moradores",
@@ -459,6 +466,66 @@ export const HELP_ARTICLES: HelpArticle[] = [
 		related: ["enviar-cobrancas-do-mes", "despesas-e-notas"],
 	},
 	{
+		slug: "inadimplencia-e-acordos",
+		category: "cobrancas",
+		title: "Inadimplência, acordos e perdão de dívidas",
+		summary:
+			"Veja quem está em atraso, negocie um acordo em parcelas, perdoe cobranças e configure os lembretes de pagamento.",
+		audience: "Administradora e síndico",
+		steps: [
+			{
+				title: "Veja quem está em atraso",
+				text: "Em Inadimplência, o topo mostra o total vencido, quantas unidades estão inadimplentes e os acordos em andamento. Clique em uma unidade para ver cada cobrança vencida e há quantos dias. Só a administradora e o síndico veem esta lista; nunca a divulgue aos moradores. Para cobrança judicial, use “Exportar CSV”.",
+				gif: "inadimplencia-1.gif",
+				gifAlt:
+					"Lista de unidades com cobranças vencidas e o detalhe de uma unidade",
+			},
+			{
+				title: "Proponha um acordo",
+				text: "Clique em “Propor acordo”, escolha as cobranças renegociadas e informe o valor negociado (pode incluir multa e juros, ou um desconto) e o número de parcelas. As parcelas entram nas próximas cobranças mensais da unidade, como “Acordo (1/4)”. Se combinar uma entrada, ela vira um boleto à parte, emitido na hora. As cobranças antigas são canceladas no Asaas e aparecem como “Renegociada”.",
+				gif: "inadimplencia-2.gif",
+				gifAlt: "Criação de um acordo em 4 parcelas para uma unidade em atraso",
+			},
+			{
+				title: "Perdoe cobranças quando fizer sentido",
+				text: "Abra a unidade e clique em “Perdoar cobranças”, por exemplo quando o antigo morador quitou a dívida na venda do imóvel ou por decisão da assembleia. O motivo é obrigatório e fica registrado na cobrança e no histórico. As cobranças são canceladas no Asaas e não dá para desfazer.",
+				gif: "inadimplencia-3.gif",
+				gifAlt: "Perdão de uma cobrança com o motivo registrado",
+			},
+			{
+				title: "Configure os lembretes de pagamento",
+				text: "Em Configurações, “Lembretes de pagamento” define quando o Asaas avisa cada responsável: no dia do vencimento e alguns dias antes, quando a cobrança vence e alguns dias depois, por e-mail, SMS ou WhatsApp. Cada mensagem tem uma tarifa do Asaas, paga pela administradora.",
+				gif: "inadimplencia-4.gif",
+				gifAlt: "Escolha dos lembretes antes e depois do vencimento",
+			},
+			{
+				title: "O que o morador vê",
+				text: "Em Minhas cobranças, o morador vê o acordo com o progresso das parcelas e quanto falta, além do link para pagar a entrada. As cobranças renegociadas aparecem como “Renegociada”, sem botão de pagamento.",
+				gif: "inadimplencia-5.gif",
+				gifAlt: "Visão do morador com o acordo e as cobranças renegociadas",
+			},
+		],
+		faqs: [
+			{
+				q: "E se o morador não pagar uma parcela do acordo?",
+				a: "A cobrança mensal fica vencida, a unidade volta a aparecer como inadimplente e o acordo fica “Em atraso”. Você decide: aguardar o pagamento ou clicar em “Encerrar”. Ao encerrar, as parcelas que ainda não foram cobradas viram um “Saldo do acordo encerrado”, que pode entrar em um novo acordo ou ser perdoado.",
+			},
+			{
+				q: "A unidade não tem responsável financeiro. Posso fazer um acordo?",
+				a: "Não: o acordo precisa de um responsável para receber as parcelas. Cadastre o responsável em Unidades e moradores ou, se for o caso, perdoe as cobranças.",
+			},
+			{
+				q: "Quem calcula a multa e os juros?",
+				a: "O Asaas, no momento do pagamento, conforme a multa e os juros configurados. No acordo mostramos uma estimativa para ajudar na negociação.",
+			},
+			{
+				q: "Unidades inadimplentes podem reservar áreas comuns?",
+				a: "Depende da área: se “Bloquear unidades inadimplentes” estiver marcado, unidades com cobrança vencida não conseguem reservar.",
+			},
+		],
+		related: ["acompanhar-pagamentos", "enviar-cobrancas-do-mes"],
+	},
+	{
 		slug: "despesas-e-notas",
 		category: "cobrancas",
 		title: "Despesas e notas fiscais",
@@ -486,6 +553,50 @@ export const HELP_ARTICLES: HelpArticle[] = [
 		related: ["acompanhar-pagamentos"],
 	},
 
+	// ---------------------------------------------------------------- Áreas comuns
+	{
+		slug: "reservas-de-areas-comuns",
+		category: "areas-comuns",
+		title: "Reservas de áreas comuns",
+		summary:
+			"Cadastre as áreas com suas regras, deixe os moradores reservarem pelo app e aprove os pedidos.",
+		audience: "Administradora, síndico e morador",
+		steps: [
+			{
+				title: "Cadastre as áreas e ative as reservas",
+				text: "Em Reservas, aba “Áreas e regras”, clique em “Nova área”: nome, capacidade, regras de uso, taxa (entra na próxima cobrança mensal da unidade), reserva por dia inteiro ou por hora, antecedência, dias de funcionamento e se precisa de aprovação. Marque “Bloquear unidades inadimplentes” se a convenção permitir. Depois, clique em “Ativar reservas”.",
+				gif: "reservas-1.gif",
+				gifAlt: "Cadastro do salão de festas e ativação das reservas",
+			},
+			{
+				title: "O morador reserva pelo app",
+				text: "Em “Reservar área comum”, o morador escolhe a área, o dia livre no calendário, a lista de convidados (opcional) e clica em “Pedir reserva”. Se a área exige aprovação, a reserva fica “Aguardando aprovação”.",
+				gif: "reservas-2.gif",
+				gifAlt: "Morador escolhendo o dia e pedindo a reserva do salão",
+			},
+			{
+				title: "Aprove ou recuse",
+				text: "Os pedidos aparecem em Reservas, em “Aguardando aprovação”. Clique em “Aprovar” ou “Recusar”. A reserva confirmada aparece em “Próximas reservas”, com a taxa e o mês da cobrança em que ela entra. Para fechar uma área em datas específicas, use “Bloquear datas”.",
+				gif: "reservas-3.gif",
+				gifAlt: "Aprovação de uma reserva pendente",
+			},
+		],
+		faqs: [
+			{
+				q: "Como a taxa da reserva é cobrada?",
+				a: "Ela entra como item na próxima cobrança mensal da unidade que ainda não foi enviada. Se a reserva for cancelada antes do envio, a taxa sai da cobrança.",
+			},
+			{
+				q: "O morador pode cancelar?",
+				a: "Sim, até o prazo definido na área (por exemplo, 2 dias antes). Depois disso, só a administração cancela.",
+			},
+			{
+				q: "Quem pode aprovar reservas?",
+				a: "A administradora e o síndico do condomínio.",
+			},
+		],
+		related: ["inadimplencia-e-acordos", "itens-de-cobranca"],
+	},
 	// ---------------------------------------------------------------- Moradores e síndicos
 	{
 		slug: "primeiro-acesso",
