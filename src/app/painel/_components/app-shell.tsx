@@ -43,7 +43,14 @@ import {
 	SheetTrigger,
 } from "~/components/ui/sheet";
 import { authClient } from "~/lib/auth-client";
-import { CONDO_BASE, condoPath, parseCondoPath, switchPath } from "./condo-nav";
+import {
+	CONDO_BASE,
+	type ResidentUnit,
+	condoPath,
+	parseCondoPath,
+	switchPath,
+} from "./condo-nav";
+import { UnitProvider, UnitSwitcher, useSelectedUnit } from "./unit-context";
 
 type NavItem = {
 	href: string;
@@ -53,7 +60,12 @@ type NavItem = {
 	/** Opens in a new tab (pages outside the app, e.g. /ajuda). */
 	external?: boolean;
 };
-type NavGroup = { title?: string; items: NavItem[] };
+type NavGroup = {
+	title?: string;
+	/** Shown under the title (the unit picker of "Minha área"). */
+	header?: ReactNode;
+	items: NavItem[];
+};
 type CondoOption = { id: string; name: string };
 
 /**
@@ -65,6 +77,8 @@ function buildGroups(
 	isAdmin: boolean,
 	adminNeedsPlan: boolean,
 	hasPlatformBilling: boolean,
+	/** Unit picker when the user lives somewhere ("Minha área" belongs to it). */
+	unitPicker: ReactNode,
 	hasReservations: boolean,
 	condoId: string | null,
 ): NavGroup[] {
@@ -125,6 +139,7 @@ function buildGroups(
 	}
 	groups.push({
 		title: "Minha área",
+		header: unitPicker,
 		items: [
 			{ href: "/painel", label: "Início", icon: <Home />, exact: true },
 			{
@@ -132,7 +147,7 @@ function buildGroups(
 				label: "Minhas cobranças",
 				icon: <Receipt />,
 			},
-			// Residents of a condominium with the reservations module on.
+			// The selected unit's condominium has the reservations module on.
 			...(hasReservations
 				? [
 						{
@@ -142,6 +157,11 @@ function buildGroups(
 						},
 					]
 				: []),
+		],
+	});
+	// Not about a unit: platform invoices and help.
+	groups.push({
+		items: [
 			// Kept after the administradora is closed: last invoices stay payable.
 			...(hasPlatformBilling
 				? [
@@ -215,6 +235,7 @@ function NavLinks({
 							{group.title}
 						</p>
 					)}
+					{group.header && <div className="pt-1 pb-2">{group.header}</div>}
 					{group.items.map((item) => {
 						const active = isActive(pathname, item);
 						return (
@@ -368,19 +389,7 @@ function SignOut({ className }: { className?: string }) {
  * Administradora admins and síndicos pick a condominium in the switcher;
  * the sidebar then lists that condominium's modules.
  */
-export function AppShell({
-	children,
-	userName,
-	userEmail,
-	contextName,
-	isAdmin,
-	adminNeedsPlan,
-	hasPlatformBilling,
-	isSindico,
-	hasReservations,
-	condos,
-	lastCondoId,
-}: {
+type ShellProps = {
 	children: ReactNode;
 	userName: string;
 	userEmail: string;
@@ -390,13 +399,41 @@ export function AppShell({
 	/** Admin(ned) an administradora that signed a plan (docs/features/18). */
 	hasPlatformBilling: boolean;
 	isSindico: boolean;
-	/** Resident of a condominium with reservations on (docs/features/06). */
-	hasReservations: boolean;
 	/** Condominiums the user can open (managed, síndico, or closed archive). */
 	condos: CondoOption[];
 	lastCondoId: string | null;
+};
+
+export function AppShell({
+	units,
+	selectedUnitId,
+	...props
+}: ShellProps & {
+	/** Units the user lives in; "Minha área" shows one at a time. */
+	units: ResidentUnit[];
+	selectedUnitId: string | null;
 }) {
+	return (
+		<UnitProvider units={units} selectedId={selectedUnitId}>
+			<Shell {...props} />
+		</UnitProvider>
+	);
+}
+
+function Shell({
+	children,
+	userName,
+	userEmail,
+	contextName,
+	isAdmin,
+	adminNeedsPlan,
+	hasPlatformBilling,
+	isSindico,
+	condos,
+	lastCondoId,
+}: ShellProps) {
 	const pathname = usePathname();
+	const { selected: selectedUnit } = useSelectedUnit();
 	const [menuOpen, setMenuOpen] = useState(false);
 
 	// The condominium in the URL wins; elsewhere, reopen the last one used.
@@ -411,7 +448,8 @@ export function AppShell({
 		isAdmin,
 		adminNeedsPlan,
 		hasPlatformBilling,
-		hasReservations,
+		selectedUnit ? <UnitSwitcher /> : null,
+		Boolean(selectedUnit?.reservationsEnabled),
 		hasCondos ? activeCondoId : null,
 	);
 	const switcher = hasCondos ? (
@@ -463,7 +501,16 @@ export function AppShell({
 			{/* Mobile top bar: brand and, for managers, the condominium switcher */}
 			<header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b bg-card/95 px-4 py-3 backdrop-blur md:hidden">
 				{brand}
-				{switcher && <div className="w-1/2 max-w-56 shrink-0">{switcher}</div>}
+				{switcher ? (
+					<div className="w-1/2 max-w-56 shrink-0">{switcher}</div>
+				) : (
+					// Residents only: their unit takes the switcher's place.
+					selectedUnit && (
+						<div className="w-1/2 max-w-56 shrink-0">
+							<UnitSwitcher />
+						</div>
+					)
+				)}
 			</header>
 
 			<main className="px-4 pt-6 pb-28 md:ml-64 md:px-8 md:pt-10 md:pb-10">

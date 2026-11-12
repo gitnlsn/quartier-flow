@@ -12,7 +12,11 @@ import {
 import { getSession } from "~/server/auth";
 import { db } from "~/server/db";
 import { AppShell } from "./_components/app-shell";
-import { LAST_CONDO_COOKIE } from "./_components/condo-nav";
+import {
+	LAST_CONDO_COOKIE,
+	type ResidentUnit,
+	SELECTED_UNIT_COOKIE,
+} from "./_components/condo-nav";
 
 export const metadata: Metadata = {
 	title: "Painel",
@@ -31,7 +35,7 @@ export default async function PainelLayout({
 	if (!session) redirect("/entrar");
 
 	const access = await getAccess(db, session.user.id);
-	const [administradora, activePlan, condos, billing, cookieStore, bookable] =
+	const [administradora, activePlan, condos, billing, cookieStore, homes] =
 		await Promise.all([
 			access.administradoraId
 				? db.administradora.findUnique({
@@ -51,22 +55,52 @@ export default async function PainelLayout({
 			}),
 			billingAdministradoras(db, session.user.id),
 			cookies(),
-			// Lives in a condominium where residents can book common areas.
-			access.isResident
-				? db.membership.count({
-						where: {
-							userId: session.user.id,
-							role: "resident",
-							endedAt: null,
-							unitId: { not: null },
+			// Units the user lives in: "Minha área" belongs to one of them.
+			db.membership.findMany({
+				where: {
+					userId: session.user.id,
+					role: "resident",
+					endedAt: null,
+					unitId: { not: null },
+				},
+				select: {
+					unit: {
+						select: {
+							id: true,
+							block: true,
+							number: true,
 							condominium: {
-								reservationsEnabled: true,
-								administradora: { closedAt: null },
+								select: {
+									id: true,
+									name: true,
+									reservationsEnabled: true,
+									administradora: { select: { closedAt: true } },
+								},
 							},
 						},
-					})
-				: 0,
+					},
+				},
+			}),
 		]);
+
+	const units = new Map<string, ResidentUnit>();
+	for (const { unit } of homes) {
+		if (!unit) continue;
+		units.set(unit.id, {
+			id: unit.id,
+			label: unit.block ? `${unit.block} · ${unit.number}` : unit.number,
+			condominiumId: unit.condominium.id,
+			condominiumName: unit.condominium.name,
+			reservationsEnabled:
+				unit.condominium.reservationsEnabled &&
+				!unit.condominium.administradora.closedAt,
+		});
+	}
+	const residentUnits = [...units.values()].sort(
+		(a, b) =>
+			a.condominiumName.localeCompare(b.condominiumName, "pt-BR") ||
+			a.label.localeCompare(b.label, "pt-BR", { numeric: true }),
+	);
 
 	return (
 		<AppShell
@@ -77,7 +111,8 @@ export default async function PainelLayout({
 			adminNeedsPlan={Boolean(access.administradoraId) && !activePlan}
 			hasPlatformBilling={billing.length > 0}
 			isSindico={access.sindicoCondominiumIds.length > 0}
-			hasReservations={bookable > 0}
+			units={residentUnits}
+			selectedUnitId={cookieStore.get(SELECTED_UNIT_COOKIE)?.value ?? null}
 			condos={condos}
 			lastCondoId={cookieStore.get(LAST_CONDO_COOKIE)?.value ?? null}
 		>

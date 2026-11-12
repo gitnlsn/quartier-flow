@@ -35,6 +35,7 @@ import {
 	Select,
 	errorMessage,
 } from "./ui";
+import { useSelectedUnit } from "./unit-context";
 
 type Condo = RouterOutputs["reservation"]["myOptions"][number];
 type Area = Condo["areas"][number];
@@ -43,40 +44,25 @@ type Mine = RouterOutputs["reservation"]["mine"][number];
 /** Resident area: book common areas and follow their bookings (docs/features/06). */
 export function BookArea() {
 	const options = api.reservation.myOptions.useQuery();
-	const [condoId, setCondoId] = useState<string | null>(null);
+	// "Minha área" belongs to the unit picked in the sidebar.
+	const { selected } = useSelectedUnit();
 	const [booking, setBooking] = useState<Area | null>(null);
 	const [booked, setBooked] = useState<string | null>(null);
 
 	if (options.isLoading) return <Loading />;
-	const condos = options.data ?? [];
-	const condo = condos.find((c) => c.id === condoId) ?? condos[0];
+	const condo = options.data?.find((c) => c.id === selected?.condominiumId);
+	const unit = condo?.units.find((u) => u.id === selected?.id);
 
 	return (
 		<div className="space-y-8">
 			<ErrorMessage message={errorMessage(options.error)} />
-			{!condo ? (
+			{!condo || !unit ? (
 				<EmptyState title="Reservas indisponíveis">
 					Seu condomínio ainda não ativou as reservas de áreas comuns.
 				</EmptyState>
 			) : (
 				<section className="space-y-4">
-					<div className="flex flex-wrap items-end justify-between gap-3">
-						<h2 className="font-semibold text-lg">Áreas</h2>
-						{condos.length > 1 && (
-							<Select
-								aria-label="Condomínio"
-								value={condo.id}
-								onChange={(e) => setCondoId(e.target.value)}
-								className="w-auto"
-							>
-								{condos.map((c) => (
-									<option key={c.id} value={c.id}>
-										{c.name}
-									</option>
-								))}
-							</Select>
-						)}
-					</div>
+					<h2 className="font-semibold text-lg">Áreas</h2>
 					{booked && (
 						<output className="block rounded-md border border-success/40 bg-success/10 p-3 text-sm">
 							{booked}
@@ -127,13 +113,15 @@ export function BookArea() {
 				open={booking !== null}
 				onOpenChange={(open) => !open && setBooking(null)}
 				title={booking ? `Reservar ${booking.name}` : ""}
-				description={condo?.name}
+				description={
+					condo && unit ? `${condo.name} · Unidade ${unit.label}` : undefined
+				}
 				size="lg"
 			>
-				{booking && condo && (
+				{booking && unit && (
 					<BookingForm
 						area={booking}
-						units={condo.units}
+						units={[unit]}
 						onDone={(message) => {
 							setBooking(null);
 							setBooked(message);
@@ -461,7 +449,8 @@ const STATUS_TEXT = {
 } as const;
 
 function MyReservations() {
-	const mine = api.reservation.mine.useQuery();
+	const { selected } = useSelectedUnit();
+	const mine = api.reservation.mine.useQuery({ unitId: selected?.id ?? null });
 	if (mine.isLoading) return <Loading />;
 	const rows = mine.data ?? [];
 	const now = new Date();

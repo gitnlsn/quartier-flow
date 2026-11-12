@@ -11,6 +11,7 @@ import {
 	EmptyState,
 	Loading,
 } from "./ui";
+import { useSelectedUnit } from "./unit-context";
 
 const OPEN = new Set(["pending", "overdue"]);
 
@@ -26,7 +27,10 @@ const monthTitle = (date: Date | string) => {
 
 /** Resident view of their charges, shared by the home page and /painel/cobrancas. */
 export function MyCharges({ onlyOpen = false }: { onlyOpen?: boolean }) {
-	const charges = api.portal.myCharges.useQuery();
+	const { selected } = useSelectedUnit();
+	const charges = api.portal.myCharges.useQuery({
+		unitId: selected?.id ?? null,
+	});
 	if (charges.isLoading) return <Loading />;
 
 	const list = (charges.data ?? []).filter(

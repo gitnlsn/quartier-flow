@@ -562,46 +562,50 @@ export const reservationRouter = createTRPCRouter({
 		}),
 
 	/** Bookings of the user's units, upcoming first, then the last past ones. */
-	mine: protectedProcedure.query(async ({ ctx }) => {
-		const unitIds = (await residentUnits(ctx.session.user.id))
-			.map((m) => m.unit?.id)
-			.filter((id): id is string => Boolean(id));
-		const rows = await ctx.db.reservation.findMany({
-			where: {
-				unitId: { in: unitIds },
-				// Six months of history is enough for residents.
-				startsAt: { gte: new Date(Date.now() - 180 * 24 * 3_600_000) },
-			},
-			orderBy: { startsAt: "desc" },
-			take: 100,
-			include: {
-				area: {
-					select: { name: true, slotType: true, cancelUntilHours: true },
+	mine: protectedProcedure
+		.input(z.object({ unitId: z.string().nullable() }).optional())
+		.query(async ({ ctx, input }) => {
+			// Only units the user lives in; the selected one when given.
+			const unitIds = (await residentUnits(ctx.session.user.id))
+				.map((m) => m.unit?.id)
+				.filter((id): id is string => Boolean(id))
+				.filter((id) => !input?.unitId || id === input.unitId);
+			const rows = await ctx.db.reservation.findMany({
+				where: {
+					unitId: { in: unitIds },
+					// Six months of history is enough for residents.
+					startsAt: { gte: new Date(Date.now() - 180 * 24 * 3_600_000) },
 				},
-				unit: { select: { block: true, number: true } },
-				condominium: { select: { name: true } },
-				billingItem: { select: { startPeriod: true, archivedAt: true } },
-			},
-		});
-		return rows.map((r) => ({
-			id: r.id,
-			area: r.area.name,
-			slotType: r.area.slotType,
-			condominium: r.condominium.name,
-			unit: unitLabel(r.unit),
-			startsAt: r.startsAt,
-			endsAt: r.endsAt,
-			status: r.status,
-			guestNames: r.guestNames,
-			feeCents: r.feeCents,
-			feePeriod:
-				r.billingItem && !r.billingItem.archivedAt
-					? r.billingItem.startPeriod
-					: null,
-			decisionNote: r.decisionNote,
-			cancelDeadline: new Date(
-				r.startsAt.getTime() - r.area.cancelUntilHours * 3_600_000,
-			),
-		}));
-	}),
+				orderBy: { startsAt: "desc" },
+				take: 100,
+				include: {
+					area: {
+						select: { name: true, slotType: true, cancelUntilHours: true },
+					},
+					unit: { select: { block: true, number: true } },
+					condominium: { select: { name: true } },
+					billingItem: { select: { startPeriod: true, archivedAt: true } },
+				},
+			});
+			return rows.map((r) => ({
+				id: r.id,
+				area: r.area.name,
+				slotType: r.area.slotType,
+				condominium: r.condominium.name,
+				unit: unitLabel(r.unit),
+				startsAt: r.startsAt,
+				endsAt: r.endsAt,
+				status: r.status,
+				guestNames: r.guestNames,
+				feeCents: r.feeCents,
+				feePeriod:
+					r.billingItem && !r.billingItem.archivedAt
+						? r.billingItem.startPeriod
+						: null,
+				decisionNote: r.decisionNote,
+				cancelDeadline: new Date(
+					r.startsAt.getTime() - r.area.cancelUntilHours * 3_600_000,
+				),
+			}));
+		}),
 });

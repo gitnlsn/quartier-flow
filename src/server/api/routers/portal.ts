@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { TERMS_VERSION } from "~/lib/terms";
 import {
 	billingAdministradoras,
@@ -66,39 +68,45 @@ export const portalRouter = createTRPCRouter({
 		};
 	}),
 
-	/** Charges where the user is the payer (financially responsible). */
-	myCharges: protectedProcedure.query(async ({ ctx }) => {
-		const charges = await ctx.db.charge.findMany({
-			where: {
-				payerUserId: ctx.session.user.id,
-				status: { notIn: ["draft", "skipped", "failed"] },
-			},
-			orderBy: { dueDate: "desc" },
-			include: {
-				condominium: { select: { name: true } },
-				unit: { select: { block: true, number: true } },
-				lines: { orderBy: { createdAt: "asc" } },
-			},
-		});
-		return charges.map((charge) => ({
-			id: charge.id,
-			description: charge.description,
-			amountCents: charge.amountCents,
-			paidAmountCents: charge.paidAmountCents,
-			dueDate: charge.dueDate,
-			status: charge.status,
-			invoiceUrl: charge.invoiceUrl,
-			lines: charge.lines.map((line) => ({
-				id: line.id,
-				name: line.name,
-				description: line.description,
-				installment: line.installment,
-				amountCents: line.amountCents,
-			})),
-			condominium: charge.condominium.name,
-			unit: charge.unit.block
-				? `${charge.unit.block} · ${charge.unit.number}`
-				: charge.unit.number,
-		}));
-	}),
+	/**
+	 * Charges where the user is the payer (financially responsible), of the
+	 * unit selected in "Minha área" when given.
+	 */
+	myCharges: protectedProcedure
+		.input(z.object({ unitId: z.string().nullable() }).optional())
+		.query(async ({ ctx, input }) => {
+			const charges = await ctx.db.charge.findMany({
+				where: {
+					payerUserId: ctx.session.user.id,
+					...(input?.unitId && { unitId: input.unitId }),
+					status: { notIn: ["draft", "skipped", "failed"] },
+				},
+				orderBy: { dueDate: "desc" },
+				include: {
+					condominium: { select: { name: true } },
+					unit: { select: { block: true, number: true } },
+					lines: { orderBy: { createdAt: "asc" } },
+				},
+			});
+			return charges.map((charge) => ({
+				id: charge.id,
+				description: charge.description,
+				amountCents: charge.amountCents,
+				paidAmountCents: charge.paidAmountCents,
+				dueDate: charge.dueDate,
+				status: charge.status,
+				invoiceUrl: charge.invoiceUrl,
+				lines: charge.lines.map((line) => ({
+					id: line.id,
+					name: line.name,
+					description: line.description,
+					installment: line.installment,
+					amountCents: line.amountCents,
+				})),
+				condominium: charge.condominium.name,
+				unit: charge.unit.block
+					? `${charge.unit.block} · ${charge.unit.number}`
+					: charge.unit.number,
+			}));
+		}),
 });

@@ -75,3 +75,20 @@ export function switchPath(pathname: string, condominiumId: string) {
 
 /** Cookie with the last condominium opened, so the sidebar reopens it. */
 export const LAST_CONDO_COOKIE = "qf_condo";
+
+/**
+ * The unit "Minha área" belongs to. A resident can live in (or pay for) more
+ * than one unit, even in different condominiums: they pick one in the
+ * sidebar and Início, Minhas cobranças and Reservas show only that unit.
+ */
+export type ResidentUnit = {
+	id: string;
+	/** "A · 101" or "101" */
+	label: string;
+	condominiumId: string;
+	condominiumName: string;
+	reservationsEnabled: boolean;
+};
+
+/** Cookie with the selected unit (a preference; read by the painel layout). */
+export const SELECTED_UNIT_COOKIE = "qf_unit";

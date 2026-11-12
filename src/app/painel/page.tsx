@@ -7,6 +7,7 @@ import { AdminOverview } from "./_components/admin-overview";
 import { MyCharges } from "./_components/my-charges";
 import { TermsUpdateCard } from "./_components/terms-update";
 import { Card, Loading, PageTitle } from "./_components/ui";
+import { useSelectedUnit } from "./_components/unit-context";
 import {
 	BecomeAdminCard,
 	FinishSignupCard,
@@ -20,6 +21,7 @@ import {
  */
 export default function PainelHome() {
 	const access = api.portal.access.useQuery();
+	const { selected: selectedUnit } = useSelectedUnit();
 	if (access.isLoading || !access.data) return <Loading />;
 	const {
 		isAdmin,
@@ -74,7 +76,14 @@ export default function PainelHome() {
 			{(isResident || !isAdmin) && (
 				<section className="space-y-3">
 					<div className="flex items-center justify-between">
-						<h2 className="font-semibold text-lg">Cobranças em aberto</h2>
+						<h2 className="font-semibold text-lg">
+							Cobranças em aberto
+							{selectedUnit && (
+								<span className="block font-normal text-muted-foreground text-sm">
+									Unidade {selectedUnit.label} · {selectedUnit.condominiumName}
+								</span>
+							)}
+						</h2>
 						<a
 							href="/painel/cobrancas"
 							className="inline-flex items-center gap-1 font-medium text-sm hover:underline"
