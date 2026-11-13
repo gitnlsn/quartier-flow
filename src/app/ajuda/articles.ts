@@ -547,10 +547,68 @@ export const HELP_ARTICLES: HelpArticle[] = [
 		faqs: [
 			{
 				q: "Quem vê as despesas?",
-				a: "A administradora e os síndicos do condomínio.",
+				a: "A administradora e os síndicos do condomínio. Os moradores veem as despesas no balancete, depois que ele é publicado.",
+			},
+			{
+				q: "Por que não consigo lançar ou excluir uma despesa de um mês?",
+				a: "O balancete desse mês já foi publicado, então as despesas dele ficam bloqueadas para não mudar o que os moradores viram. Despublique o balancete, corrija e publique de novo.",
 			},
 		],
-		related: ["acompanhar-pagamentos"],
+		related: ["balancetes-e-prestacao-de-contas", "acompanhar-pagamentos"],
+	},
+	{
+		slug: "balancetes-e-prestacao-de-contas",
+		category: "cobrancas",
+		title: "Balancetes e prestação de contas",
+		summary:
+			"Acompanhe receitas, despesas e saldo do condomínio, publique o balancete do mês e deixe os moradores consultarem.",
+		audience: "Administradora, síndico e morador",
+		steps: [
+			{
+				title: "Informe o saldo inicial",
+				text: "Em Balancetes, clique em “Informar saldo inicial” e digite quanto o condomínio tinha em caixa no primeiro dia de um mês, antes de usar o Quartier Flow. Os pagamentos e as despesas a partir desse mês entram no saldo. Só dá para alterar enquanto nenhum balancete estiver publicado.",
+				gif: "balancetes-1.gif",
+				gifAlt: "Saldo inicial informado e a lista de meses com o saldo final",
+			},
+			{
+				title: "Acompanhe as finanças",
+				text: "Na Visão geral do condomínio, o quadro “Finanças” mostra o saldo em caixa, a receita e as despesas do mês, a inadimplência de hoje e um gráfico de receitas e despesas dos últimos 12 meses. A receita é o que os moradores pagaram no mês, menos as tarifas do Asaas.",
+				gif: "balancetes-2.gif",
+				gifAlt: "Quadro Finanças com o gráfico de receitas e despesas",
+			},
+			{
+				title: "Revise e publique o balancete",
+				text: "Abra um mês que já terminou. Enquanto é “Rascunho”, os valores são calculados na hora e os moradores não veem. Confira receitas, tarifas, despesas por categoria e o saldo final, clique em “Publicar” e, se quiser, deixe uma observação para os moradores. Ao publicar, os valores ficam congelados e as despesas do mês ficam bloqueadas.",
+				gif: "balancetes-3.gif",
+				gifAlt:
+					"Revisão do balancete de outubro e publicação com uma observação",
+			},
+			{
+				title: "O que o morador vê",
+				text: "Em Balancetes, na Minha área, o morador vê só os balancetes publicados do condomínio da unidade, com a observação da administração, e pode baixar o PDF ou exportar em CSV.",
+				gif: "balancetes-4.gif",
+				gifAlt: "Morador abrindo o balancete publicado de outubro",
+			},
+		],
+		faqs: [
+			{
+				q: "Como corrijo um balancete publicado?",
+				a: "Abra o balancete e clique em “Despublicar”. Ele some para os moradores e as despesas do mês voltam a poder ser alteradas. Corrija e publique de novo. Tudo fica registrado no histórico.",
+			},
+			{
+				q: "Quando um pagamento entra como receita?",
+				a: "No mês em que o morador pagou, assim que o Asaas confirma o pagamento. Cobranças estornadas, canceladas ou perdoadas não entram.",
+			},
+			{
+				q: "O síndico pode publicar?",
+				a: "Não. O síndico vê o quadro de finanças e todos os balancetes, inclusive os rascunhos, mas quem publica é a administradora.",
+			},
+			{
+				q: "Posso publicar o mês atual?",
+				a: "Não. O balancete só pode ser publicado depois que o mês termina, para não faltar nenhum pagamento ou despesa.",
+			},
+		],
+		related: ["despesas-e-notas", "acompanhar-pagamentos"],
 	},
 
 	// ---------------------------------------------------------------- Áreas comuns
