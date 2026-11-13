@@ -24,7 +24,7 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 | [01](01-authentication-and-2fa.md) | Authentication (email link + Google) | MVP (foundation) — implemented v1 | — |
 | [02](02-condominium-units-and-residents.md) | Condominium, units & residents | MVP (foundation) — implemented slice 1 | 01 |
 | [03](03-billing-and-payments.md) | Billing & payments (boleto / Pix via Asaas) | MVP (foundation) — implemented slice 1 | 01, 02, 17 |
-| [04](04-delinquency-management.md) | Delinquency management | MVP — implemented slices 1–2 (left: sandbox validation, voting block with 12) | 03, 17 |
+| [04](04-delinquency-management.md) | Delinquency management | MVP — implemented slices 1–2, sandbox-validated (left: voting block, needs 12) | 03, 17 |
 | [05](05-financial-transparency.md) | Financial transparency & dashboard | MVP — implemented slice 1 | 03, 17 |
 | [06](06-common-area-reservations.md) | Common area reservations (paid add-on) | MVP — implemented slice 1 | 02, 04, 18 |
 | [07](07-announcements-board.md) | Announcements board | MVP | 02, 16 |

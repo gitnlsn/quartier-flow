@@ -1,6 +1,6 @@
 # 04 — Delinquency Management
 
-**Status:** Slice 1 + remaining items 2–6 implemented (Nov/2026); items 1 and 7 open, see [Remaining work](#remaining-work) · **Phase:** MVP · **Depends on:** 03, 17
+**Status:** Slice 1 + remaining items 1–6 done (Nov/2026); item 7 waits for 12, see [Remaining work](#remaining-work) · **Phase:** MVP · **Depends on:** 03, 17
 
 ## Summary
 Track units with overdue charges and run an automatic collection schedule (régua de
@@ -182,9 +182,26 @@ auto-end (off → nothing; before N days → nothing; after → ended once, noti
 audit), renegotiation, case with note + PDF, stage change, dossiê download, switching
 the sender both ways against the Asaas sandbox.
 
+## Asaas sandbox validation (item 1, Nov/2026)
+Run on 13/11/2026 against the sandbox, with real webhooks delivered to a local server
+through a temporary tunnel (a webhook on the sandbox main account, removed afterwards).
+Every case passed; no code change was needed.
+
+| Case | Result |
+|---|---|
+| Acordo over a charge `OVERDUE` on Asaas | `DELETE /payments/{id}` succeeds; `PAYMENT_DELETED` arrives and the charge stays `renegotiated`. |
+| Deleting it again (retry) | Succeeds or 404, both treated as done by `deletePayment`: retries are safe. |
+| Partial failure (2nd deletion refused) | Acordo stays `pending` with the Asaas message; the 1st charge stays `renegotiated`. "Tentar novamente" skips it (no second deletion, no duplicate acordo). |
+| Charge paid before the deletion | Retry refuses: "foi paga enquanto o acordo era criado. Cancele este acordo e crie outro." |
+| Cancelling a `pending` acordo | `POST /payments/{id}/restore` brings the payment back as `OVERDUE`; `PAYMENT_RESTORED` is processed; the charge is `overdue` again, without acordo. |
+| Forgiving a charge on Asaas | Deleted on Asaas; after `PAYMENT_DELETED` it stays `forgiven`. |
+| Which statuses can be deleted | **Only `PENDING` and `OVERDUE`**. A `RECEIVED` payment is refused: "Só é possível remover cobranças pendentes ou vencidas". A deleted `PENDING` payment restores as `PENDING` (local charge `canceled` → `pending` through the webhooks). |
+
+Not covered: an entrada boleto during these runs (it was tested in slice 1).
+
 ## Remaining work
-Items 2–6 are done (above). Left: 1 (sandbox validation, no dependency) and 7 (waits
-for 12). The original notes for 2–6 are kept below for history.
+Items 1–6 are done (above). Left: 7 (waits for 12). The original notes for 1–6 are
+kept below for history.
 
 ### 1. Asaas end-to-end validation (no dependency)
 **Why:** the Asaas side of slice 1 was only partly exercised on the sandbox. The entrada
