@@ -15,6 +15,23 @@ import { deliver, sendEmail } from "./messaging";
 const MAGIC_LINK_TTL_SECONDS = 15 * 60;
 
 /**
+ * The site answers on both the bare domain and www (one redirects to the
+ * other, e.g. quartier-flow.com -> www.quartier-flow.com), so requests can
+ * come from either: trust both, whichever one BETTER_AUTH_URL names.
+ * Better Auth only trusts the exact BETTER_AUTH_URL origin by default.
+ */
+function siteOrigins(baseURL: string) {
+	const url = new URL(baseURL);
+	const host = url.hostname;
+	if (host === "localhost" || !host.includes(".") || /^[\d.]+$/.test(host)) {
+		return [url.origin];
+	}
+	const twin = host.startsWith("www.") ? host.slice(4) : `www.${host}`;
+	const port = url.port ? `:${url.port}` : "";
+	return [url.origin, `${url.protocol}//${twin}${port}`];
+}
+
+/**
  * Passwordless authentication, open to everyone (docs/features/01).
  *
  * - Users sign in with a one-time link sent to their email, or with Google.
@@ -28,6 +45,7 @@ const MAGIC_LINK_TTL_SECONDS = 15 * 60;
 export const auth = betterAuth({
 	appName: "Quartier Flow",
 	baseURL: env.BETTER_AUTH_URL,
+	trustedOrigins: siteOrigins(env.BETTER_AUTH_URL),
 	secret: env.AUTH_SECRET,
 	database: prismaAdapter(db, { provider: "postgresql", transaction: true }),
 
