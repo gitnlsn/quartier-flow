@@ -151,17 +151,38 @@ export async function applyReminders(
 	}
 }
 
-/** Reminder settings of a condominium's BillingConfig. */
-export const reminderSettings = (config: {
-	reminderBefore: number[];
-	reminderAfter: number[];
-	reminderEmail: boolean;
-	reminderSms: boolean;
-	reminderWhatsapp: boolean;
-}): ReminderSettings => ({
-	before: config.reminderBefore,
-	after: config.reminderAfter,
-	email: config.reminderEmail,
-	sms: config.reminderSms,
-	whatsapp: config.reminderWhatsapp,
-});
+/** Every Asaas reminder off: the app sends them instead. */
+export const NO_ASAAS_REMINDERS: ReminderSettings = {
+	before: [],
+	after: [],
+	email: false,
+	sms: false,
+	whatsapp: false,
+};
+
+/**
+ * Reminder settings Asaas must apply for a condominium's payers: its
+ * BillingConfig, or all off when the administradora sends reminders through
+ * the app (reminderSender "app", src/server/reminders.ts). Only the reminder
+ * notifications are turned off, not the customer's notifications as a whole:
+ * the "new boleto" email from Asaas keeps going out.
+ */
+export const reminderSettings = (
+	config: {
+		reminderBefore: number[];
+		reminderAfter: number[];
+		reminderEmail: boolean;
+		reminderSms: boolean;
+		reminderWhatsapp: boolean;
+	},
+	sender: string,
+): ReminderSettings =>
+	sender === "app"
+		? NO_ASAAS_REMINDERS
+		: {
+				before: config.reminderBefore,
+				after: config.reminderAfter,
+				email: config.reminderEmail,
+				sms: config.reminderSms,
+				whatsapp: config.reminderWhatsapp,
+			};

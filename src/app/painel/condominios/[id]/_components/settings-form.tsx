@@ -35,7 +35,7 @@ type Condo = RouterOutputs["condominium"]["get"];
 type Mode = "manual" | "automatic";
 
 /** A titled block that explains one decision and holds its fields. */
-function Section({
+export function Section({
 	icon,
 	title,
 	description,
@@ -72,7 +72,7 @@ function Section({
 }
 
 /** Example box under a section: shows the effect of the current values. */
-function Preview({ children }: { children: ReactNode }) {
+export function Preview({ children }: { children: ReactNode }) {
 	return (
 		<div className="mt-4 rounded-lg bg-muted/60 p-3 text-sm">
 			<p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
@@ -507,7 +507,7 @@ export function RemindersForm({ condo }: { condo: Condo }) {
 
 	return (
 		<form
-			className="mt-6 space-y-4"
+			className="space-y-4"
 			onSubmit={(event: FormEvent) => {
 				event.preventDefault();
 				save.mutate({ condominiumId: condo.id, ...form });

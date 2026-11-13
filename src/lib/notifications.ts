@@ -64,6 +64,32 @@ export const NOTIFICATION_TYPES = {
 		description: "Um acordo de pagamento da sua unidade foi encerrado.",
 		defaultChannels: ["email"],
 	},
+	"charge.due_reminder": {
+		group: "Cobranças",
+		label: "Lembrete de vencimento",
+		description: "Sua cobrança vence em breve ou vence hoje.",
+		defaultChannels: ["email"],
+	},
+	"charge.overdue_reminder": {
+		group: "Cobranças",
+		label: "Cobrança em atraso",
+		description: "Uma cobrança sua venceu e ainda não foi paga.",
+		defaultChannels: ["email"],
+	},
+	"agreement.auto_broken": {
+		group: "Inadimplência",
+		label: "Acordo encerrado automaticamente",
+		description:
+			"Para quem administra: um acordo foi encerrado pela regra de atraso.",
+		defaultChannels: ["email"],
+	},
+	"delinquency.escalation": {
+		group: "Inadimplência",
+		label: "Escalonamento de atraso",
+		description:
+			"Para quem administra: uma unidade atingiu uma etapa da régua de cobrança.",
+		defaultChannels: ["email"],
+	},
 } satisfies Record<string, TypeInfo>;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;

@@ -21,3 +21,44 @@ export function validReminders(list: number[], allowed: readonly number[]) {
 		list.filter((v) => v !== 0).length <= 1
 	);
 }
+
+/**
+ * Our own collection schedule (docs/features/04), used when the
+ * administradora sends reminders through the app instead of Asaas.
+ * offsetDays < 0: before the due date; 0: on the due date; > 0: overdue.
+ * "managers" steps escalate to the administradora and síndicos.
+ */
+export type CollectionAudience = "payer" | "managers";
+export type CollectionStepInput = {
+	offsetDays: number;
+	audience: CollectionAudience;
+};
+
+export const DEFAULT_COLLECTION_STEPS: CollectionStepInput[] = [
+	{ offsetDays: -3, audience: "payer" },
+	{ offsetDays: 0, audience: "payer" },
+	{ offsetDays: 1, audience: "payer" },
+	{ offsetDays: 7, audience: "payer" },
+	{ offsetDays: 15, audience: "payer" },
+	{ offsetDays: 30, audience: "managers" },
+];
+
+export const MIN_STEP_OFFSET = -30;
+export const MAX_STEP_OFFSET = 120;
+export const MAX_COLLECTION_STEPS = 12;
+
+/** "3 dias antes", "No vencimento", "7 dias depois". */
+export function stepLabel(offsetDays: number) {
+	if (offsetDays === 0) return "No vencimento";
+	const n = Math.abs(offsetDays);
+	return `${n} dia${n === 1 ? "" : "s"} ${offsetDays < 0 ? "antes" : "depois"}`;
+}
+
+export const sortSteps = <T extends CollectionStepInput>(steps: T[]) =>
+	[...steps].sort(
+		(a, b) =>
+			a.offsetDays - b.offsetDays || a.audience.localeCompare(b.audience),
+	);
+
+/** Who sends payment reminders, chosen per administradora. */
+export type ReminderSender = "asaas" | "app";

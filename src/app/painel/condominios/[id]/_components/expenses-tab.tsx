@@ -43,7 +43,7 @@ const formatSize = (bytes: number) =>
  * the upload limit and drops EXIF metadata such as GPS location. PDFs pass
  * through unchanged.
  */
-async function prepareFile(file: File): Promise<File> {
+export async function prepareFile(file: File): Promise<File> {
 	if (file.type === "application/pdf") return file;
 	let bitmap: ImageBitmap;
 	try {

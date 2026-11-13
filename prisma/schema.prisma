@@ -149,6 +149,10 @@ model Administradora {
   /// Closed by its admin: no management, no new invoices (docs/features/19)
   closedAt        DateTime?
   closedById      String?
+  /// Who sends payment reminders to its payers (docs/features/04): "asaas"
+  /// (BillingConfig.reminder*) or "app" (CollectionStep via notify(), Asaas
+  /// reminders off). Per administradora: Asaas settings are per payer.
+  reminderSender  String    @default("asaas")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -201,6 +205,8 @@ model Condominium {
   areaBlocks    AreaBlock[]
   agreements    Agreement[]
   balanceSheets BalanceSheet[]
+  collectionSteps CollectionStep[]
+  collectionCases CollectionCase[]
 
   @@index([administradoraId])
 }
@@ -220,6 +226,7 @@ model Unit {
   items         UnitBillingItem[]
   reservations  Reservation[]
   agreements    Agreement[]
+  collectionCases CollectionCase[]
 
   @@unique([condominiumId, block, number])
   @@index([condominiumId])
@@ -355,6 +362,9 @@ model BillingConfig {
   reminderEmail    Boolean     @default(true)
   reminderSms      Boolean     @default(true)
   reminderWhatsapp Boolean     @default(false)
+  /// Ends an acordo automatically when an installment or the entrada is this
+  /// many days overdue (docs/features/04); null = off, decided case by case.
+  agreementAutoBreakDays Int?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 }
@@ -411,6 +421,7 @@ model Charge {
   agreement       Agreement?   @relation("AgreementOriginalCharges", fields: [agreementId], references: [id], onDelete: SetNull)
   /// Set on the acordo's entrada (down payment) charge
   downPaymentOf   Agreement?   @relation("AgreementDownPayment")
+  reminders       ReminderLog[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -451,6 +462,10 @@ model Agreement {
   createdBy           User             @relation("AgreementCreatedBy", fields: [createdById], references: [id])
   brokenAt            DateTime?
   brokenById          String?
+  /// "Renegociar saldo": the acordo this one replaced (docs/features/04)
+  replacesId          String?          @unique
+  replaces            Agreement?       @relation("AgreementReplaces", fields: [replacesId], references: [id], onDelete: SetNull)
+  replacedBy          Agreement?       @relation("AgreementReplaces")
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
@@ -799,4 +814,85 @@ model NotificationPreference {
   updatedAt DateTime @updatedAt
 
   @@id([userId, type])
+}
+
+// ---------------------------------------------------------------------------
+// Delinquency, remaining work (docs/features/04): our own reminders and legal
+// collection.
+// ---------------------------------------------------------------------------
+
+/**
+ * One step of a condominium's collection schedule, used when its
+ * administradora sends reminders through the app (reminderSender "app").
+ * offsetDays: negative = before the due date. audience: "payer" (reminder to
+ * the financially responsible) or "managers" (escalation to administradora
+ * and síndicos).
+ */
+model CollectionStep {
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  offsetDays    Int
+  audience      String      @default("payer")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([condominiumId, offsetDays, audience])
+}
+
+/** A reminder step already sent for a charge: makes the daily cron idempotent. */
+model ReminderLog {
+  id         String   @id @default(cuid())
+  chargeId   String
+  charge     Charge   @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  offsetDays Int
+  audience   String
+  createdAt  DateTime @default(now())
+
+  @@unique([chargeId, offsetDays, audience])
+}
+
+/**
+ * Extrajudicial / judicial collection of a unit's debt. The timeline shows
+ * these events plus ones derived from the unit's data (acordos, payments,
+ * forgiveness, reminders), so nothing has to be written twice.
+ */
+model CollectionCase {
+  id            String            @id @default(cuid())
+  condominiumId String
+  condominium   Condominium       @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  unitId        String
+  unit          Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  /// extrajudicial | judicial | closed
+  stage         String            @default("extrajudicial")
+  /// Law office / lawyer handling it
+  handler       String?
+  openedById    String?
+  openedAt      DateTime          @default(now())
+  closedAt      DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  events        CollectionEvent[]
+
+  @@index([condominiumId])
+  @@index([unitId])
+}
+
+/** Append-only timeline entry of a collection case. */
+model CollectionEvent {
+  id        String         @id @default(cuid())
+  caseId    String
+  case      CollectionCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  /// note | stage | handler
+  kind      String
+  text      String?
+  /// private "attachments" bucket, served via signed URLs
+  fileKey   String?
+  fileName  String?
+  fileType  String?
+  fileSize  Int?
+  actorId   String?
+  createdAt DateTime       @default(now())
+
+  @@index([caseId, createdAt])
 }

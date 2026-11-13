@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { formatPeriod } from "~/lib/billing-items";
 import { formatDate } from "~/lib/br";
 import {
+	AGING_BUCKETS,
 	type AgreementState,
 	MAX_AGREEMENT_INSTALLMENTS,
 	agreementPlan,
@@ -23,7 +24,9 @@ import {
 	sendContext,
 } from "~/server/billing/runs";
 import { db } from "~/server/db";
+import { delinquencyHistory } from "~/server/finance";
 import { notify } from "~/server/notifications";
+import { condominiumManagers } from "~/server/notifications/recipients";
 
 /**
  * Delinquency management (docs/features/04): the delinquency rule other
@@ -48,7 +51,7 @@ export async function isDelinquent(
 }
 
 /** Current financially responsible resident of each unit. */
-async function responsibleByUnit(unitIds: string[]) {
+export async function responsibleByUnit(unitIds: string[]) {
 	const memberships = await db.membership.findMany({
 		where: {
 			unitId: { in: unitIds },
@@ -85,6 +88,7 @@ const agreementInclude = {
 		select: { id: true, status: true, dueDate: true, amountCents: true },
 		orderBy: { dueDate: "asc" },
 	},
+	replacedBy: { select: { id: true, createdAt: true } },
 } satisfies Prisma.AgreementInclude;
 
 type AgreementRow = Prisma.AgreementGetPayload<{
@@ -223,8 +227,42 @@ export async function delinquencyOverview(condominiumId: string) {
 		entry.totalCents += charge.amountCents;
 		byUnit.set(charge.unit.id, entry);
 	}
-	const responsible = await responsibleByUnit([...byUnit.keys()]);
-	const progress = await withProgress(agreements);
+	const [responsible, progress, history, cases] = await Promise.all([
+		responsibleByUnit([...byUnit.keys()]),
+		withProgress(agreements),
+		delinquencyHistory(condominiumId),
+		db.collectionCase.findMany({
+			where: { condominiumId, closedAt: null },
+			select: { id: true, unitId: true, stage: true },
+		}),
+	]);
+	const caseByUnit = new Map(cases.map((c) => [c.unitId, c]));
+
+	// Aging of the overdue amount (days since each charge's due date).
+	const aging = AGING_BUCKETS.map((bucket) => ({
+		...bucket,
+		cents: 0,
+		charges: 0,
+	}));
+	for (const charge of overdue) {
+		const days = daysLate(charge.dueDate);
+		const bucket =
+			aging.find((b) => days <= b.maxDays) ?? aging[aging.length - 1];
+		if (bucket) {
+			bucket.cents += charge.amountCents;
+			bucket.charges++;
+		}
+	}
+	const open = progress.filter(
+		(a) => a.state === "active" || a.state === "late",
+	);
+	const agreementTotals = {
+		openCents: open.reduce((sum, a) => sum + a.remainingCents, 0),
+		lateCents: open
+			.filter((a) => a.state === "late")
+			.reduce((sum, a) => sum + a.remainingCents, 0),
+		recoveredCents: progress.reduce((sum, a) => sum + a.paidCents, 0),
+	};
 
 	const units = [...byUnit.values()]
 		.map((entry) => {
@@ -249,6 +287,7 @@ export async function delinquencyOverview(condominiumId: string) {
 				totalCents: entry.totalCents,
 				oldestDueDate: oldest,
 				daysLate: daysLate(oldest),
+				collectionCase: caseByUnit.get(entry.unit.id) ?? null,
 				activeAgreement: progress.some(
 					(a) =>
 						a.unitId === entry.unit.id &&
@@ -268,6 +307,13 @@ export async function delinquencyOverview(condominiumId: string) {
 		interestPercent: Number(condo.billingConfig?.interestPercent ?? 0),
 		units,
 		agreements: progress,
+		aging: aging.map(({ label, cents, charges }) => ({
+			label,
+			cents,
+			charges,
+		})),
+		history,
+		agreementTotals,
 	};
 }
 
@@ -333,6 +379,8 @@ export async function createAgreement(input: {
 	installments: number;
 	notes: string | null;
 	actorUserId: string;
+	/** "Renegociar saldo": the acordo being replaced. */
+	replacesId?: string;
 }) {
 	if (input.chargeIds.length === 0) {
 		throw new BillingError("Selecione ao menos uma cobrança em atraso.");
@@ -419,6 +467,7 @@ export async function createAgreement(input: {
 				installmentCents: plan.installmentCents,
 				notes: input.notes,
 				createdById: input.actorUserId,
+				replacesId: input.replacesId ?? null,
 			},
 		});
 		const linked = await tx.charge.updateMany({
@@ -454,6 +503,7 @@ export async function createAgreement(input: {
 			downPaymentCents: input.downPaymentCents,
 			installments: input.installments,
 			installmentCents: plan.installmentCents,
+			replacesId: input.replacesId ?? null,
 		},
 	});
 
@@ -597,8 +647,12 @@ export async function finalizeAgreement(
 		await notify({
 			userIds: [agreement.payerUserId],
 			type: "agreement.created",
-			title: "Acordo de pagamento registrado",
-			body: `Foi registrado um acordo de pagamento para a unidade ${unitLabel(agreement.unit)} em ${agreement.condominium.name}. Veja as parcelas e os vencimentos em Minhas cobranças.`,
+			title: agreement.replacesId
+				? "Acordo de pagamento renegociado"
+				: "Acordo de pagamento registrado",
+			body: agreement.replacesId
+				? `O acordo de pagamento da unidade ${unitLabel(agreement.unit)} em ${agreement.condominium.name} foi renegociado e substituído por um novo. Veja as novas parcelas e os vencimentos em Minhas cobranças.`
+				: `Foi registrado um acordo de pagamento para a unidade ${unitLabel(agreement.unit)} em ${agreement.condominium.name}. Veja as parcelas e os vencimentos em Minhas cobranças.`,
 			url: "/painel/cobrancas",
 			condominiumId: agreement.condominiumId,
 			data: { agreementId: agreement.id },
@@ -636,7 +690,17 @@ export async function finalizeAgreement(
  * encerrado" (not on Asaas), so the debt stays in the delinquency list, the
  * export and `isDelinquent`, and can go to a new acordo or be forgiven.
  */
-export async function breakAgreement(agreementId: string, actorUserId: string) {
+export async function breakAgreement(
+	agreementId: string,
+	actorUserId: string | null,
+	options: {
+		/** "auto": ended by the daily cron (BillingConfig.agreementAutoBreakDays). */
+		reason?: "manual" | "auto" | "renegotiated";
+		/** Tell the payer (off when a new acordo follows right away). */
+		notifyPayer?: boolean;
+	} = {},
+) {
+	const reason = options.reason ?? "manual";
 	const agreement = await db.agreement.findUniqueOrThrow({
 		where: { id: agreementId },
 		include: {
@@ -649,14 +713,18 @@ export async function breakAgreement(agreementId: string, actorUserId: string) {
 		throw new BillingError("Só acordos ativos podem ser encerrados.");
 	}
 	await db.$transaction(async (tx) => {
-		await tx.agreement.update({
-			where: { id: agreement.id },
+		// Only one caller wins (manual click vs. the daily cron).
+		const { count } = await tx.agreement.updateMany({
+			where: { id: agreement.id, status: "active" },
 			data: {
 				status: "broken",
 				brokenAt: new Date(),
 				brokenById: actorUserId,
 			},
 		});
+		if (count !== 1) {
+			throw new BillingError("Este acordo já foi encerrado.");
+		}
 		if (agreement.billingItem && !agreement.billingItem.archivedAt) {
 			await tx.unitBillingItem.update({
 				where: { id: agreement.billingItem.id },
@@ -717,8 +785,20 @@ export async function breakAgreement(agreementId: string, actorUserId: string) {
 		action: "agreement.break",
 		entity: "agreement",
 		entityId: agreement.id,
-		data: { unbilledInstallments: unbilled, balanceChargeId },
+		data: { unbilledInstallments: unbilled, balanceChargeId, reason },
 	});
+	if (reason === "auto") {
+		await notify({
+			userIds: await condominiumManagers(agreement.condominiumId),
+			type: "agreement.auto_broken",
+			title: "Acordo encerrado automaticamente",
+			body: `O acordo da unidade ${unitLabel(agreement.unit)} em ${agreement.condominium.name} foi encerrado pela regra de atraso configurada.${unbilled > 0 ? " As parcelas não emitidas viraram um saldo em aberto, que pode entrar em um novo acordo." : ""}`,
+			url: `/painel/condominios/${agreement.condominiumId}/inadimplencia`,
+			condominiumId: agreement.condominiumId,
+			data: { agreementId: agreement.id },
+		});
+	}
+	if (options.notifyPayer === false) return { balanceChargeId, unbilled };
 	await notify({
 		userIds: [agreement.payerUserId],
 		type: "agreement.broken",
@@ -729,6 +809,146 @@ export async function breakAgreement(agreementId: string, actorUserId: string) {
 		data: { agreementId: agreement.id },
 		excludeUserId: actorUserId,
 	});
+	return { balanceChargeId, unbilled };
+}
+
+/**
+ * "Renegociar saldo" (docs/features/04): ends an active acordo and creates a
+ * new one over what is left (the installments never issued, as the "Saldo do
+ * acordo encerrado" charge) plus any other overdue charges of the unit,
+ * linked through `Agreement.replacesId`. Everything that can be checked is
+ * checked before the current acordo is touched.
+ */
+export async function renegotiateAgreement(input: {
+	agreementId: string;
+	extraChargeIds: string[];
+	totalCents: number;
+	downPaymentCents: number;
+	downPaymentDueDate: string | null;
+	installments: number;
+	notes: string | null;
+	actorUserId: string;
+}) {
+	const current = await db.agreement.findUniqueOrThrow({
+		where: { id: input.agreementId },
+		select: {
+			id: true,
+			status: true,
+			condominiumId: true,
+			unitId: true,
+			installments: true,
+			billingItemId: true,
+		},
+	});
+	if (current.status !== "active") {
+		throw new BillingError("Só acordos ativos podem ser renegociados.");
+	}
+	const issued = current.billingItemId
+		? await db.chargeLine.count({
+				where: {
+					sourceId: current.billingItemId,
+					charge: { status: { notIn: ["draft", "skipped"] } },
+				},
+			})
+		: 0;
+	if (issued >= current.installments && input.extraChargeIds.length === 0) {
+		throw new BillingError(
+			"Todas as parcelas deste acordo já foram emitidas: não há saldo a renegociar. Use Propor acordo com as cobranças em atraso.",
+		);
+	}
+	const extras = await db.charge.count({
+		where: {
+			id: { in: input.extraChargeIds },
+			unitId: current.unitId,
+			status: "overdue",
+			agreementId: null,
+		},
+	});
+	if (extras !== input.extraChargeIds.length) {
+		throw new BillingError(
+			"Alguma cobrança selecionada não está mais em atraso. Atualize a página.",
+		);
+	}
+	const payer = (await responsibleByUnit([current.unitId])).get(current.unitId);
+	if (!payer?.cpf) {
+		throw new BillingError(
+			"A unidade precisa de um responsável financeiro com CPF para o novo acordo.",
+		);
+	}
+	if (input.downPaymentCents > 0) await sendContext(current.condominiumId);
+
+	const { balanceChargeId } = await breakAgreement(
+		current.id,
+		input.actorUserId,
+		{ reason: "renegotiated", notifyPayer: false },
+	);
+	return createAgreement({
+		condominiumId: current.condominiumId,
+		unitId: current.unitId,
+		chargeIds: [
+			...(balanceChargeId ? [balanceChargeId] : []),
+			...input.extraChargeIds,
+		],
+		totalCents: input.totalCents,
+		downPaymentCents: input.downPaymentCents,
+		downPaymentDueDate: input.downPaymentDueDate,
+		installments: input.installments,
+		notes: input.notes,
+		actorUserId: input.actorUserId,
+		replacesId: current.id,
+	});
+}
+
+/**
+ * Acordos to end automatically (BillingConfig.agreementAutoBreakDays): an
+ * installment or the entrada overdue for more than N days. Called by the
+ * daily cron; `breakAgreement` only ends an acordo that is still active.
+ */
+export async function autoBreakAgreements(today: Date) {
+	const configs = await db.billingConfig.findMany({
+		where: {
+			agreementAutoBreakDays: { not: null },
+			condominium: { administradora: { closedAt: null } },
+		},
+		select: { condominiumId: true, agreementAutoBreakDays: true },
+	});
+	const results: { agreementId: string; error?: string }[] = [];
+	for (const config of configs) {
+		const days = config.agreementAutoBreakDays ?? 0;
+		const limit = new Date(today.getTime() - days * 86_400_000);
+		const agreements = await db.agreement.findMany({
+			where: { condominiumId: config.condominiumId, status: "active" },
+			select: { id: true, billingItemId: true, downPaymentChargeId: true },
+		});
+		for (const agreement of agreements) {
+			const late = await db.charge.count({
+				where: {
+					status: "overdue",
+					dueDate: { lt: limit },
+					OR: [
+						...(agreement.downPaymentChargeId
+							? [{ id: agreement.downPaymentChargeId }]
+							: []),
+						...(agreement.billingItemId
+							? [{ lines: { some: { sourceId: agreement.billingItemId } } }]
+							: []),
+					],
+				},
+			});
+			if (late === 0) continue;
+			try {
+				await breakAgreement(agreement.id, null, { reason: "auto" });
+				results.push({ agreementId: agreement.id });
+			} catch (error) {
+				console.error(`[delinquency] auto-break ${agreement.id}`, error);
+				results.push({
+					agreementId: agreement.id,
+					error: error instanceof Error ? error.message : "Erro inesperado",
+				});
+			}
+		}
+	}
+	return results;
 }
 
 /**
@@ -871,6 +1091,16 @@ export async function cancelPendingAgreement(
 	});
 }
 
+/** Every acordo of a unit (but canceled ones), with progress. */
+export async function unitAgreements(unitId: string) {
+	const agreements = await db.agreement.findMany({
+		where: { unitId, status: { not: "canceled" } },
+		orderBy: { createdAt: "asc" },
+		include: agreementInclude,
+	});
+	return withProgress(agreements);
+}
+
 /** Acordos of the units a resident pays for (Minha área). */
 export async function residentAgreements(
 	userId: string,
@@ -880,6 +1110,7 @@ export async function residentAgreements(
 		where: {
 			payerUserId: userId,
 			status: { in: ["active", "broken"] },
+			replacedBy: { is: null },
 			...(unitId ? { unitId } : {}),
 		},
 		orderBy: { createdAt: "desc" },

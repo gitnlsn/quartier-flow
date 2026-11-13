@@ -4,8 +4,12 @@ import { z } from "zod";
 
 import { MAX_AGREEMENT_INSTALLMENTS } from "~/lib/delinquency";
 import {
+	MAX_COLLECTION_STEPS,
+	MAX_STEP_OFFSET,
+	MIN_STEP_OFFSET,
 	REMINDER_AFTER_OPTIONS,
 	REMINDER_BEFORE_OPTIONS,
+	sortSteps,
 	validReminders,
 } from "~/lib/reminders";
 import { assertCanViewCondominium, getAccess } from "~/server/access";
@@ -20,6 +24,7 @@ import {
 } from "~/server/api/trpc";
 import { applyReminders, reminderSettings } from "~/server/asaas/notifications";
 import { audit } from "~/server/audit";
+import { db } from "~/server/db";
 import {
 	breakAgreement,
 	cancelPendingAgreement,
@@ -28,7 +33,9 @@ import {
 	exportRows,
 	finalizeAgreement,
 	forgiveCharges,
+	renegotiateAgreement,
 } from "~/server/delinquency";
+import { collectionSteps } from "~/server/reminders";
 
 /**
  * Delinquency management (docs/features/04). Only the administradora and the
@@ -45,6 +52,69 @@ async function assertManagedAgreement(
 		select: { condominiumId: true },
 	});
 	await assertManagedCondominium(db, administradoraId, agreement.condominiumId);
+}
+
+/**
+ * Re-applies the Asaas reminder settings to every current payer of the given
+ * condominiums, in the background (after the response). A payer in several
+ * of them gets the settings of the last one: Asaas settings are per payer.
+ * Payers that fail are synced again before their next boleto.
+ */
+async function resyncPayers(condominiumIds: string[]) {
+	const condos = await db.condominium.findMany({
+		where: { id: { in: condominiumIds }, billingConfig: { isNot: null } },
+		select: {
+			id: true,
+			billingConfig: true,
+			administradora: { select: { reminderSender: true } },
+			memberships: {
+				where: {
+					endedAt: null,
+					financiallyResponsible: true,
+					user: { paymentCustomer: { isNot: null } },
+				},
+				select: {
+					user: {
+						select: {
+							paymentCustomer: {
+								select: { userId: true, asaasCustomerId: true },
+							},
+						},
+					},
+				},
+			},
+		},
+	});
+	const jobs = new Map<
+		string,
+		{
+			customer: { userId: string; asaasCustomerId: string };
+			settings: ReturnType<typeof reminderSettings>;
+		}
+	>();
+	for (const condo of condos) {
+		if (!condo.billingConfig) continue;
+		const settings = reminderSettings(
+			condo.billingConfig,
+			condo.administradora.reminderSender,
+		);
+		for (const m of condo.memberships) {
+			const customer = m.user.paymentCustomer;
+			if (customer) jobs.set(customer.userId, { customer, settings });
+		}
+	}
+	after(async () => {
+		let failed = 0;
+		for (const job of jobs.values()) {
+			if (!(await applyReminders(job.customer, job.settings))) failed++;
+		}
+		if (failed > 0) {
+			console.error(
+				`[reminders] ${failed}/${jobs.size} payers failed to sync (${condominiumIds.length} condominiums)`,
+			);
+		}
+	});
+	return jobs.size;
 }
 
 const offsets = (allowed: readonly number[]) =>
@@ -176,6 +246,37 @@ export const delinquencyRouter = createTRPCRouter({
 			);
 		}),
 
+	/** "Renegociar saldo": ends the acordo and creates its replacement. */
+	renegotiateAgreement: adminProcedure
+		.input(
+			z.object({
+				agreementId: z.string(),
+				extraChargeIds: z.array(z.string()),
+				totalCents: z.number().int().positive("Informe o valor do acordo"),
+				downPaymentCents: z.number().int().min(0),
+				downPaymentDueDate: z
+					.string()
+					.regex(/^\d{4}-\d{2}-\d{2}$/)
+					.nullable(),
+				installments: z.number().int().min(1).max(MAX_AGREEMENT_INSTALLMENTS),
+				notes: z.string().trim().max(500).nullable(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			await assertManagedAgreement(
+				ctx.db,
+				ctx.administradoraId,
+				input.agreementId,
+			);
+			return asUserError(() =>
+				renegotiateAgreement({
+					...input,
+					notes: input.notes || null,
+					actorUserId: ctx.session.user.id,
+				}),
+			);
+		}),
+
 	cancelAgreement: adminProcedure
 		.input(z.object({ agreementId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
@@ -221,7 +322,7 @@ export const delinquencyRouter = createTRPCRouter({
 					message: "Configure a cobrança mensal deste condomínio primeiro.",
 				});
 			}
-			const config = await ctx.db.billingConfig.update({
+			await ctx.db.billingConfig.update({
 				where: { condominiumId: input.condominiumId },
 				data: {
 					reminderBefore: input.before,
@@ -245,44 +346,154 @@ export const delinquencyRouter = createTRPCRouter({
 					whatsapp: input.whatsapp,
 				},
 			});
+			return { payers: await resyncPayers([input.condominiumId]) };
+		}),
 
-			const payers = await ctx.db.membership.findMany({
-				where: {
-					condominiumId: input.condominiumId,
-					endedAt: null,
-					financiallyResponsible: true,
-					user: { paymentCustomer: { isNot: null } },
-				},
+	/**
+	 * Reminder setup of a condominium: who sends (per administradora), the
+	 * app's collection steps (or the defaults) and the acordo auto-end rule.
+	 */
+	reminderSetup: protectedProcedure
+		.input(z.object({ condominiumId: z.string() }))
+		.query(async ({ ctx, input }) => {
+			const access = await getAccess(ctx.db, ctx.session.user.id);
+			await assertCanViewCondominium(ctx.db, access, input.condominiumId);
+			const condo = await ctx.db.condominium.findUniqueOrThrow({
+				where: { id: input.condominiumId },
 				select: {
-					user: {
-						select: {
-							paymentCustomer: {
-								select: { userId: true, asaasCustomerId: true },
-							},
-						},
-					},
+					administradora: { select: { reminderSender: true } },
+					billingConfig: { select: { agreementAutoBreakDays: true } },
 				},
 			});
-			const customers = [
-				...new Map(
-					payers
-						.map((p) => p.user.paymentCustomer)
-						.filter((c) => c !== null)
-						.map((c) => [c.userId, c]),
-				).values(),
-			];
-			const settings = reminderSettings(config);
-			after(async () => {
-				let failed = 0;
-				for (const customer of customers) {
-					if (!(await applyReminders(customer, settings))) failed++;
-				}
-				if (failed > 0) {
-					console.error(
-						`[reminders] ${failed}/${customers.length} payers failed to sync for ${input.condominiumId}`,
-					);
-				}
+			return {
+				sender: condo.administradora.reminderSender === "app" ? "app" : "asaas",
+				...(await collectionSteps(input.condominiumId)),
+				agreementAutoBreakDays:
+					condo.billingConfig?.agreementAutoBreakDays ?? null,
+			} as const;
+		}),
+
+	/**
+	 * Who sends payment reminders for every condominium of the administradora.
+	 * "app" turns the Asaas reminders off for all its payers; "asaas" turns
+	 * them back on with each condominium's settings.
+	 */
+	setReminderSender: adminProcedure
+		.input(z.object({ sender: z.enum(["asaas", "app"]) }))
+		.mutation(async ({ ctx, input }) => {
+			const administradora = await ctx.db.administradora.update({
+				where: { id: ctx.administradoraId },
+				data: { reminderSender: input.sender },
+				select: { condominiums: { select: { id: true } } },
 			});
-			return { payers: customers.length };
+			await audit({
+				administradoraId: ctx.administradoraId,
+				actorUserId: ctx.session.user.id,
+				action: "administradora.reminder_sender",
+				entity: "administradora",
+				entityId: ctx.administradoraId,
+				data: { sender: input.sender },
+			});
+			const payers = await resyncPayers(
+				administradora.condominiums.map((c) => c.id),
+			);
+			return { payers };
+		}),
+
+	/** The app's collection schedule of a condominium (replaces all steps). */
+	saveCollectionSteps: adminProcedure
+		.input(
+			z.object({
+				condominiumId: z.string(),
+				steps: z
+					.array(
+						z.object({
+							offsetDays: z
+								.number()
+								.int()
+								.min(
+									MIN_STEP_OFFSET,
+									`No máximo ${-MIN_STEP_OFFSET} dias antes`,
+								)
+								.max(
+									MAX_STEP_OFFSET,
+									`No máximo ${MAX_STEP_OFFSET} dias depois`,
+								),
+							audience: z.enum(["payer", "managers"]),
+						}),
+					)
+					.max(
+						MAX_COLLECTION_STEPS,
+						`No máximo ${MAX_COLLECTION_STEPS} etapas`,
+					),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			await assertManagedCondominium(
+				ctx.db,
+				ctx.administradoraId,
+				input.condominiumId,
+			);
+			const seen = new Set<string>();
+			const steps = sortSteps(input.steps).filter((step) => {
+				const key = `${step.offsetDays}:${step.audience}`;
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return !(step.audience === "managers" && step.offsetDays <= 0);
+			});
+			await ctx.db.$transaction([
+				ctx.db.collectionStep.deleteMany({
+					where: { condominiumId: input.condominiumId },
+				}),
+				ctx.db.collectionStep.createMany({
+					data: steps.map((step) => ({
+						condominiumId: input.condominiumId,
+						...step,
+					})),
+				}),
+			]);
+			await audit({
+				administradoraId: ctx.administradoraId,
+				actorUserId: ctx.session.user.id,
+				action: "collection_steps.save",
+				entity: "condominium",
+				entityId: input.condominiumId,
+				data: { steps },
+			});
+			return { steps };
+		}),
+
+	/** Ends acordos automatically after N days late (null = off). */
+	saveAutoBreak: adminProcedure
+		.input(
+			z.object({
+				condominiumId: z.string(),
+				days: z.number().int().min(1).max(365).nullable(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			await assertManagedCondominium(
+				ctx.db,
+				ctx.administradoraId,
+				input.condominiumId,
+			);
+			const { count } = await ctx.db.billingConfig.updateMany({
+				where: { condominiumId: input.condominiumId },
+				data: { agreementAutoBreakDays: input.days },
+			});
+			if (count === 0) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Configure a cobrança mensal deste condomínio primeiro.",
+				});
+			}
+			await audit({
+				administradoraId: ctx.administradoraId,
+				actorUserId: ctx.session.user.id,
+				action: "billing_config.agreement_auto_break",
+				entity: "condominium",
+				entityId: input.condominiumId,
+				data: { days: input.days },
+			});
 		}),
 });

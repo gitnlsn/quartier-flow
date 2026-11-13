@@ -470,7 +470,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
 		category: "cobrancas",
 		title: "Inadimplência, acordos e perdão de dívidas",
 		summary:
-			"Veja quem está em atraso, negocie um acordo em parcelas, perdoe cobranças e configure os lembretes de pagamento.",
+			"Veja quem está em atraso e a evolução da inadimplência, negocie e renegocie acordos, perdoe cobranças, acompanhe a cobrança jurídica e configure os lembretes de pagamento.",
 		audience: "Administradora e síndico",
 		steps: [
 			{
@@ -493,8 +493,20 @@ export const HELP_ARTICLES: HelpArticle[] = [
 				gifAlt: "Perdão de uma cobrança com o motivo registrado",
 			},
 			{
+				title: "Acompanhe os indicadores",
+				text: "O quadro “Indicadores” mostra o valor vencido por tempo de atraso (até 30, 31 a 60, 61 a 90 e mais de 90 dias), a porcentagem de unidades inadimplentes no fim de cada um dos últimos 12 meses e quanto está em acordos, atrasado em acordos e já foi recuperado. Clique em “Ver tabela” para os números mês a mês.",
+			},
+			{
+				title: "Renegocie o saldo de um acordo",
+				text: "Para mudar um acordo em andamento (mais parcelas, outro valor), clique em “Renegociar saldo”. O acordo atual é encerrado e as parcelas ainda não cobradas viram um novo acordo, junto com outras cobranças em atraso da unidade se você quiser. O acordo antigo fica como “Substituído” e o morador recebe um único aviso.",
+			},
+			{
+				title: "Leve a dívida para a cobrança jurídica",
+				text: "Abra a unidade e clique em “Abrir cobrança jurídica”. A cobrança começa como extrajudicial; informe o escritório ou advogado responsável e registre anotações com documentos (foto ou PDF). O histórico junta tudo o que aconteceu com as cobranças da unidade: vencimentos, pagamentos, acordos, perdões e lembretes. Passe para “judicial” quando for à Justiça, baixe o dossiê em PDF para o advogado (com o CPF, por isso só a administradora baixa e fica registrado) e encerre quando a dívida for resolvida.",
+			},
+			{
 				title: "Configure os lembretes de pagamento",
-				text: "Em Configurações, “Lembretes de pagamento” define quando o Asaas avisa cada responsável: no dia do vencimento e alguns dias antes, quando a cobrança vence e alguns dias depois, por e-mail, SMS ou WhatsApp. Cada mensagem tem uma tarifa do Asaas, paga pela administradora.",
+				text: "Em Configurações, escolha quem envia os lembretes, para todos os condomínios da administradora. Pelo Asaas: no dia do vencimento e alguns dias antes, quando a cobrança vence e alguns dias depois, por e-mail, SMS ou WhatsApp, com tarifa do Asaas por mensagem. Pelo Quartier Flow: uma régua de cobrança com quantas etapas quiser, por e-mail e aviso no app, sem tarifa, inclusive avisos à administradora e ao síndico depois de alguns dias de atraso.",
 				gif: "inadimplencia-4.gif",
 				gifAlt: "Escolha dos lembretes antes e depois do vencimento",
 			},
@@ -508,7 +520,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
 		faqs: [
 			{
 				q: "E se o morador não pagar uma parcela do acordo?",
-				a: "A cobrança mensal fica vencida, a unidade volta a aparecer como inadimplente e o acordo fica “Em atraso”. Você decide: aguardar o pagamento ou clicar em “Encerrar”. Ao encerrar, as parcelas que ainda não foram cobradas viram um “Saldo do acordo encerrado”, que pode entrar em um novo acordo ou ser perdoado.",
+				a: "A cobrança mensal fica vencida, a unidade volta a aparecer como inadimplente e o acordo fica “Em atraso”. Você decide: aguardar o pagamento ou clicar em “Encerrar”. Ao encerrar, as parcelas que ainda não foram cobradas viram um “Saldo do acordo encerrado”, que pode entrar em um novo acordo ou ser perdoado. Se preferir uma regra fixa, ligue “Encerrar acordos em atraso” em Configurações: o acordo é encerrado automaticamente depois do número de dias de atraso escolhido, e a administração é avisada.",
 			},
 			{
 				q: "A unidade não tem responsável financeiro. Posso fazer um acordo?",

@@ -16,6 +16,7 @@ import {
 	RUN_STATUS_LABEL,
 } from "../../../_components/ui";
 import { ChargesTab, SettingsTab } from "./billing-tab";
+import { CollectionCaseView } from "./collection-case";
 import { useCondo } from "./condo-context";
 import { DelinquencyTab } from "./delinquency-tab";
 import { ExpensesTab } from "./expenses-tab";
@@ -196,6 +197,16 @@ export function DelinquencyPage() {
 		<>
 			<ModuleTitle title="Inadimplência" help="inadimplencia-e-acordos" />
 			<DelinquencyTab condo={useCondo()} />
+		</>
+	);
+}
+
+export function CollectionCasePage({ caseId }: { caseId: string }) {
+	const condo = useCondo();
+	return (
+		<>
+			<ModuleTitle title="Cobrança jurídica" help="inadimplencia-e-acordos" />
+			<CollectionCaseView condominiumId={condo.id} caseId={caseId} />
 		</>
 	);
 }

@@ -98,7 +98,7 @@ export async function nextOpenPeriod(
 export async function refreshDraftRun(
 	condominiumId: string,
 	period: string,
-	actorUserId: string,
+	actorUserId: string | null,
 ) {
 	const run = await db.billingRun.findUnique({
 		where: { condominiumId_period: { condominiumId, period } },
@@ -138,7 +138,7 @@ export async function sendContext(condominiumId: string): Promise<SendContext> {
 		walletId: payout.walletId,
 		finePercent: Number(config.finePercent),
 		interestPercent: Number(config.interestPercent),
-		reminders: reminderSettings(config),
+		reminders: reminderSettings(config, condo.administradora.reminderSender),
 	};
 }
 

@@ -46,9 +46,10 @@ import {
 	errorMessage,
 	fieldErrors,
 } from "../../../_components/ui";
+import { CollectionSettings } from "./collection-settings";
 import { ImportItems } from "./import-items";
 import { ItemForm, currentPeriod } from "./item-form";
-import { RemindersForm, SettingsForm } from "./settings-form";
+import { SettingsForm } from "./settings-form";
 
 /** Unit items created by other modules: managed there, not edited here. */
 const MANAGED_BY: Record<string, { module: CondoModule; label: string }> = {
@@ -768,7 +769,7 @@ export function SettingsTab({ condo }: { condo: Condo }) {
 	return condo.canManage ? (
 		<>
 			<SettingsForm condo={condo} />
-			<RemindersForm condo={condo} />
+			<CollectionSettings condo={condo} />
 		</>
 	) : (
 		<Card title="Cobrança mensal">

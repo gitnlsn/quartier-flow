@@ -1,6 +1,6 @@
 # 04 — Delinquency Management
 
-**Status:** Slice 1 implemented (Nov/2026); see [Remaining work](#remaining-work) · **Phase:** MVP · **Depends on:** 03, 17
+**Status:** Slice 1 + remaining items 2–6 implemented (Nov/2026); items 1 and 7 open, see [Remaining work](#remaining-work) · **Phase:** MVP · **Depends on:** 03, 17
 
 ## Summary
 Track units with overdue charges and run an automatic collection schedule (régua de
@@ -128,9 +128,63 @@ What exists:
 - New items (acordo, reservation fee) never start in a month whose due date has
   passed or whose run was already sent (`nextOpenPeriod`), so no installment is lost.
 
+## Implemented (slice 2, Nov/2026): remaining items 2–6
+- **Indicators (item 2):** the Inadimplência module shows the aging of the overdue
+  amount (≤30, 31–60, 61–90, 90+ days), the month-end delinquency rate of the last 12
+  months (`delinquencyHistory` in `src/server/finance.ts`, the same rule as the
+  balancete), and acordo totals (to receive, late, recovered = paid through acordos),
+  with a table view. No shareable conselho view yet.
+- **Legal collection (item 3):** `CollectionCase` (one open per unit; stages
+  extrajudicial → judicial, or closed, which is final) and the append-only
+  `CollectionEvent` (opened, note, stage, handler). Notes take a photo/PDF in the
+  private attachments bucket (`POST /api/cobrancas-juridicas/[id]/eventos`, files via
+  `/api/cobrancas-juridicas/eventos/[eventId]/anexo`). The timeline **derives** the
+  automatic events from the unit's data instead of writing them twice: charges that
+  went overdue, late payments, acordos (created, ended, replaced), forgiveness and the
+  app's reminders (`ReminderLog`). Asaas reminders are not logged by us, so they are
+  not in it. Dossiê PDF (`GET /api/cobrancas-juridicas/[id]/dossie`,
+  `src/server/pdf/dossier.tsx`): debts with the fine/interest estimate, acordos with
+  their installments, timeline, payer CPF; admin only, audited
+  (`collection_case.dossier`). Page: Inadimplência → unit → "Abrir/Ver cobrança
+  jurídica" (`/painel/condominios/[id]/inadimplencia/cobrancas/[caseId]`); the unit
+  shows a stage badge in the list. Code: `src/server/collection.ts`, router
+  `collection`. Asaas *negativação* not evaluated yet.
+- **Renegociar saldo (item 4):** `renegotiateAgreement` checks everything it can,
+  then `breakAgreement(..., { reason: "renegotiated", notifyPayer: false })` and
+  `createAgreement` over the saldo charge plus any overdue charges the administradora
+  picks, with `Agreement.replacesId`. The old acordo shows "Substituído" (hidden from
+  the resident); the payer gets one "Acordo renegociado" notification. Refused when
+  every installment was already issued and nothing else is selected.
+- **Automatic end (item 5):** `BillingConfig.agreementAutoBreakDays` (Configurações →
+  "Encerrar acordos em atraso", off by default). Daily `GET /api/cron/delinquency`
+  (09:30 UTC; `?date=` outside production) calls `autoBreakAgreements`: an active
+  acordo whose entrada or an installment charge is overdue for more than N days is
+  ended with a system actor (`brokenById` null, audit `reason: "auto"`); managers get
+  `agreement.auto_broken`, the payer `agreement.broken`. `breakAgreement` now only
+  ends an acordo that is still active (`updateMany`), so the cron and a click can't
+  both end it.
+- **Our own reminders (item 6):** `Administradora.reminderSender` ("asaas" | "app"),
+  switched in Configurações → "Quem envia os lembretes" for **all** the
+  administradora's condominiums (Asaas settings are per payer). With "app",
+  `reminderSettings()` returns all-off and every payer is re-synced: only the
+  due-date/overdue reminder notifications are turned off on Asaas, not
+  `notificationDisabled`, so the Asaas "new boleto" email keeps going. Steps per
+  condominium (`CollectionStep`: offset −30…+120 days, audience payer | managers;
+  defaults D−3, D0, D+1, D+7, D+15 to the payer and D+30 to managers until saved).
+  The same daily cron sends them through `notify()` (`charge.due_reminder`,
+  `charge.overdue_reminder`, `delinquency.escalation`), claiming each (charge, step)
+  in `ReminderLog` first, so nothing is sent twice; a step missed by up to 2 days is
+  still sent. Payer reminders only for charges on Asaas (payable); texts carry no
+  amounts. Code: `src/server/reminders.ts`.
+
+Verified locally (Nov/2026): reminder cron (D−3/D0/D+30, re-run sends nothing),
+auto-end (off → nothing; before N days → nothing; after → ended once, notifications,
+audit), renegotiation, case with note + PDF, stage change, dossiê download, switching
+the sender both ways against the Asaas sandbox.
+
 ## Remaining work
-Ordered by priority. Items 1–5 have no dependency on unbuilt features; 6 and 7 wait for
-16 and 12.
+Items 2–6 are done (above). Left: 1 (sandbox validation, no dependency) and 7 (waits
+for 12). The original notes for 2–6 are kept below for history.
 
 ### 1. Asaas end-to-end validation (no dependency)
 **Why:** the Asaas side of slice 1 was only partly exercised on the sandbox. The entrada
@@ -263,14 +317,14 @@ above).
 told why; with it off, it votes normally.
 
 ### Known limitations of slice 1
-- Asaas reminders are per payer, not per condominium (see item 6).
+- Asaas reminders are per payer, not per condominium; the app sender (item 6) avoids
+  it, but the sender itself is per administradora, and a payer in two
+  administradoras still gets the settings saved last.
 - We don't collect phone numbers, so SMS/WhatsApp only reach payers whose Asaas
   customer has a phone; the others get email only.
 - "Saldo do acordo encerrado" isn't on Asaas, so it can't be paid directly: it goes
   into a new acordo or is forgiven. A future "Emitir boleto do saldo" would fix that.
 - The fine/interest shown when proposing an acordo is an estimate; Asaas computes the
   real value at payment.
-- The resident isn't notified when an acordo is created or ended (needs 16, or a
-  transactional email through `src/server/auth/messaging.ts`).
 - Forgiveness can't be undone.
 - Penalty rules (fine cap, interest) still need legal review before launch.

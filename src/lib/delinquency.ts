@@ -14,6 +14,14 @@ export function daysLate(dueDate: Date | string, now = Date.now()) {
 
 export const MAX_AGREEMENT_INSTALLMENTS = 60;
 
+/** Aging of the overdue amount, by days since the due date. */
+export const AGING_BUCKETS = [
+	{ label: "Até 30 dias", maxDays: 30 },
+	{ label: "31 a 60 dias", maxDays: 60 },
+	{ label: "61 a 90 dias", maxDays: 90 },
+	{ label: "Mais de 90 dias", maxDays: Number.POSITIVE_INFINITY },
+] as const;
+
 /**
  * Splits a negotiated total into entrada + N equal installments. The
  * installment is rounded up to the cent, so the final total can be a few

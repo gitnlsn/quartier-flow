@@ -54,11 +54,14 @@ All roles receive notifications; each user controls their preferences.
 - **First consumers:** reservations (06): request awaiting approval → managers;
   approved / rejected / canceled by the administration → the resident who booked;
   confirmed booking canceled by the resident → managers. Acordos (04): registered and
-  ended → the payer (no amounts in the text).
+  ended → the payer (no amounts in the text). Delinquency (04, slice 2): the app's
+  payment reminders (`charge.due_reminder`, `charge.overdue_reminder`) → the payer,
+  escalation steps (`delinquency.escalation`) and acordos ended by the auto rule
+  (`agreement.auto_broken`) → managers; sent by `GET /api/cron/delinquency`.
 
 **Not yet:** web push (service worker + VAPID), Android push (needs the Capacitor
 project, FCM), SMS (no phone numbers on users yet, provider to choose), delivery
-status webhooks from SendPulse (bounces), moving the Asaas reminders here (04 item 6).
+status webhooks from SendPulse (bounces), push/SMS channels for the reminders.
 
 **Sending domain:** `quartier-flow.com` is authenticated in SendPulse (SPF
 `include:mxsspf.sendpulse.com`, DKIM `sign._domainkey`, DMARC `p=none` for now; DNS at
@@ -116,11 +119,10 @@ model NotificationPreference {
 - **Charge notifications overlap with Asaas** (17): Asaas can email/SMS/WhatsApp
   payers itself. If we send charge reminders, set `notificationDisabled: true` on the
   Asaas customer; otherwise don't send our own. Never both.
-- **Today Asaas sends the payment reminders** (04, slice 1: `BillingConfig.reminder*`,
-  synced per payer by `src/server/asaas/notifications.ts`). Moving them to this service
-  is 04 → Remaining work, item 6 (`reminderSender`, `CollectionStep`, delivery log).
-  Other 04 events that should notify once this exists: acordo created/ended (resident),
-  acordo ended automatically (administradora, 04 item 5), escalation steps.
+- **Payment reminders:** each administradora chooses the sender (04, item 6:
+  `Administradora.reminderSender`). "asaas": `BillingConfig.reminder*`, synced per
+  payer by `src/server/asaas/notifications.ts`. "app": `CollectionStep` sent through
+  this service, with the Asaas reminders switched off for those payers.
 
 ## Open questions
 - ~~Which email provider?~~ SendPulse (slice 1). SMS provider still open.

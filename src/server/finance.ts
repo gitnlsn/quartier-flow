@@ -384,6 +384,32 @@ export async function financeDashboard(condominiumId: string, months = 12) {
 }
 
 /**
+ * Month-end delinquency of the last `months` months (docs/features/04,
+ * "Delinquency indicators"); the current month is measured today.
+ */
+export async function delinquencyHistory(condominiumId: string, months = 12) {
+	const current = currentPeriod();
+	const first = addMonths(current, -(months - 1));
+	const now = new Date();
+	const [condo, charges] = await Promise.all([
+		loadCondo(condominiumId),
+		loadDelinquencyCharges(condominiumId, now),
+	]);
+	return Array.from({ length: months }, (_, i) => {
+		const period = addMonths(first, i);
+		const { to } = periodBounds(period);
+		const d = delinquencyAt(charges, to < now ? to : now, condo._count.units);
+		return {
+			period,
+			units: d.units,
+			unitsTotal: d.unitsTotal,
+			overdueCents: d.overdueCents,
+			rate: d.unitsTotal ? d.units / d.unitsTotal : 0,
+		};
+	});
+}
+
+/**
  * Refuses to change expenses of a month whose balancete is published:
  * residents saw those numbers. Unpublish first.
  */

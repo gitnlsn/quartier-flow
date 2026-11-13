@@ -1,5 +1,6 @@
 import { administradoraRouter } from "~/server/api/routers/administradora";
 import { billingRouter } from "~/server/api/routers/billing";
+import { collectionRouter } from "~/server/api/routers/collection";
 import { condominiumRouter } from "~/server/api/routers/condominium";
 import { delinquencyRouter } from "~/server/api/routers/delinquency";
 import { expenseRouter } from "~/server/api/routers/expense";
@@ -31,6 +32,7 @@ export const appRouter = createTRPCRouter({
 	platformBilling: platformBillingRouter,
 	reservation: reservationRouter,
 	delinquency: delinquencyRouter,
+	collection: collectionRouter,
 	notification: notificationRouter,
 });
 

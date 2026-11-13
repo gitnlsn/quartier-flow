@@ -1,8 +1,17 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Download, Handshake } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronRight,
+	Download,
+	Gavel,
+	Handshake,
+	Repeat,
+} from "lucide-react";
+import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 
+import { buttonVariants } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
 	Table,
@@ -14,6 +23,7 @@ import {
 } from "~/components/ui/table";
 import { formatPeriod } from "~/lib/billing-items";
 import { formatBRL, formatDate, parseBRLToCents } from "~/lib/br";
+import { STAGE_LABEL, STAGE_TONE, stageOf } from "~/lib/collection";
 import {
 	AGREEMENT_STATE_LABEL,
 	AGREEMENT_STATE_TONE,
@@ -22,8 +32,10 @@ import {
 	estimatedCharges,
 	unitLabel,
 } from "~/lib/delinquency";
+import { periodShortLabel } from "~/lib/finance";
 import { centsToMoneyInput } from "~/lib/masks";
 import { type RouterOutputs, api } from "~/trpc/react";
+import { condoPath } from "../../../_components/condo-nav";
 import { downloadCsv } from "../../../_components/spreadsheet";
 import {
 	Badge,
@@ -40,6 +52,7 @@ import {
 	errorMessage,
 	fieldErrors,
 } from "../../../_components/ui";
+import { CasesCard, OpenCaseModal } from "./collection-case";
 
 type Condo = RouterOutputs["condominium"]["get"];
 type Overview = RouterOutputs["delinquency"]["overview"];
@@ -76,6 +89,8 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const [proposing, setProposing] = useState<DelinquentUnit | null>(null);
 	const [forgiving, setForgiving] = useState<DelinquentUnit | null>(null);
+	const [renegotiating, setRenegotiating] = useState<Agreement | null>(null);
+	const [openingCase, setOpeningCase] = useState<DelinquentUnit | null>(null);
 
 	const exportRows = api.delinquency.exportRows.useMutation({
 		onSuccess: (rows) => {
@@ -151,6 +166,8 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 				/>
 			</div>
 
+			<IndicatorsCard data={data} />
+
 			<Card
 				title="Unidades com cobranças vencidas"
 				description="Só a administradora e o síndico veem esta lista. Nunca a divulgue aos moradores."
@@ -204,6 +221,17 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 													)}
 													{unitLabel(row.unit)}
 												</span>
+												{row.collectionCase && (
+													<span className="mt-1 block">
+														<Badge
+															tone={
+																STAGE_TONE[stageOf(row.collectionCase.stage)]
+															}
+														>
+															{STAGE_LABEL[stageOf(row.collectionCase.stage)]}
+														</Badge>
+													</span>
+												)}
 											</TableCell>
 											<TableCell className="hidden sm:table-cell">
 												{row.payer?.name ?? (
@@ -269,10 +297,31 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 																? `Contato: ${row.payer.email}`
 																: "Sem responsável financeiro na unidade."}
 														</p>
-														{canManage && (
+														{(canManage || row.collectionCase) && (
 															<div className="flex flex-wrap gap-2">
+																{row.collectionCase ? (
+																	<Link
+																		href={`${condoPath(condo.id, "inadimplencia")}/cobrancas/${row.collectionCase.id}`}
+																		className={buttonVariants({
+																			variant: "outline",
+																			size: "sm",
+																		})}
+																	>
+																		<Gavel aria-hidden />
+																		Ver cobrança jurídica
+																	</Link>
+																) : (
+																	<Button
+																		variant="outline"
+																		size="sm"
+																		onClick={() => setOpeningCase(row)}
+																	>
+																		<Gavel aria-hidden />
+																		Abrir cobrança jurídica
+																	</Button>
+																)}
 																{/* Phones: the actions column is hidden. */}
-																{!row.activeAgreement && (
+																{canManage && !row.activeAgreement && (
 																	<Button
 																		size="sm"
 																		className="sm:hidden"
@@ -282,13 +331,15 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 																		Propor acordo
 																	</Button>
 																)}
-																<Button
-																	variant="outline"
-																	size="sm"
-																	onClick={() => setForgiving(row)}
-																>
-																	Perdoar cobranças
-																</Button>
+																{canManage && (
+																	<Button
+																		variant="outline"
+																		size="sm"
+																		onClick={() => setForgiving(row)}
+																	>
+																		Perdoar cobranças
+																	</Button>
+																)}
 															</div>
 														)}
 													</div>
@@ -303,7 +354,44 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 				)}
 			</Card>
 
-			<AgreementsCard agreements={data.agreements} canManage={canManage} />
+			<AgreementsCard
+				agreements={data.agreements}
+				canManage={canManage}
+				onRenegotiate={setRenegotiating}
+			/>
+
+			<CasesCard condominiumId={condo.id} />
+
+			{openingCase && (
+				<OpenCaseModal
+					condominiumId={condo.id}
+					row={openingCase}
+					onClose={() => setOpeningCase(null)}
+				/>
+			)}
+
+			{renegotiating && (
+				<AgreementModal
+					condominiumId={condo.id}
+					unit={renegotiating.unit}
+					payerName={
+						data.units.find((u) => u.unit.id === renegotiating.unit.id)?.payer
+							?.name ?? null
+					}
+					charges={
+						data.units.find((u) => u.unit.id === renegotiating.unit.id)
+							?.charges ?? []
+					}
+					replacing={renegotiating}
+					finePercent={data.finePercent}
+					interestPercent={data.interestPercent}
+					onClose={() => setRenegotiating(null)}
+					onCreated={() => {
+						setRenegotiating(null);
+						void utils.delinquency.overview.invalidate();
+					}}
+				/>
+			)}
 
 			{forgiving && (
 				<ForgiveModal
@@ -320,7 +408,9 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 			{proposing && (
 				<AgreementModal
 					condominiumId={condo.id}
-					row={proposing}
+					unit={proposing.unit}
+					payerName={proposing.payer?.name ?? null}
+					charges={proposing.charges}
 					finePercent={data.finePercent}
 					interestPercent={data.interestPercent}
 					onClose={() => setProposing(null)}
@@ -337,9 +427,11 @@ export function DelinquencyTab({ condo }: { condo: Condo }) {
 function AgreementsCard({
 	agreements,
 	canManage,
+	onRenegotiate,
 }: {
 	agreements: Agreement[];
 	canManage: boolean;
+	onRenegotiate: (agreement: Agreement) => void;
 }) {
 	const utils = api.useUtils();
 	const refresh = () => utils.delinquency.overview.invalidate();
@@ -377,9 +469,13 @@ function AgreementsCard({
 								<div className="space-y-1">
 									<p className="flex flex-wrap items-center gap-2 font-medium">
 										Unidade {unitLabel(a.unit)}
-										<Badge tone={AGREEMENT_STATE_TONE[a.state]}>
-											{AGREEMENT_STATE_LABEL[a.state]}
-										</Badge>
+										{a.replacedBy ? (
+											<Badge>Substituído</Badge>
+										) : (
+											<Badge tone={AGREEMENT_STATE_TONE[a.state]}>
+												{AGREEMENT_STATE_LABEL[a.state]}
+											</Badge>
+										)}
 									</p>
 									<p className="text-sm">
 										{formatBRL(a.totalCents)} ·{" "}
@@ -435,6 +531,17 @@ function AgreementsCard({
 												Cancelar
 											</ConfirmButton>
 										)}
+										{a.status === "active" &&
+											(a.state === "active" || a.state === "late") && (
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => onRenegotiate(a)}
+												>
+													<Repeat aria-hidden />
+													Renegociar saldo
+												</Button>
+											)}
 										{(a.state === "active" || a.state === "late") && (
 											<ConfirmButton
 												title="Encerrar este acordo?"
@@ -459,27 +566,44 @@ function AgreementsCard({
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 
+/**
+ * Proposes an acordo over overdue charges, or ("Renegociar saldo", with
+ * `replacing`) ends an active acordo and replaces it with a new one over its
+ * remaining balance plus, optionally, other overdue charges of the unit.
+ */
 function AgreementModal({
 	condominiumId,
-	row,
+	unit,
+	payerName,
+	charges,
+	replacing,
 	finePercent,
 	interestPercent,
 	onClose,
 	onCreated,
 }: {
 	condominiumId: string;
-	row: DelinquentUnit;
+	unit: { id: string; block: string; number: string };
+	payerName: string | null;
+	charges: DelinquentUnit["charges"];
+	replacing?: Agreement;
 	finePercent: number;
 	interestPercent: number;
 	onClose: () => void;
 	onCreated: () => void;
 }) {
+	// Installments never issued: they become the "Saldo do acordo encerrado".
+	const unbilled = replacing
+		? Math.max(0, replacing.installments - replacing.issuedInstallments)
+		: 0;
+	const saldoCents = replacing ? unbilled * replacing.installmentCents : 0;
 	const [selected, setSelected] = useState<Set<string>>(
-		() => new Set(row.charges.map((c) => c.id)),
+		() => new Set(replacing ? [] : charges.map((c) => c.id)),
 	);
 	const sums = (ids: Set<string>) => {
-		const list = row.charges.filter((c) => ids.has(c.id));
-		const original = list.reduce((sum, c) => sum + c.amountCents, 0);
+		const list = charges.filter((c) => ids.has(c.id));
+		const original =
+			saldoCents + list.reduce((sum, c) => sum + c.amountCents, 0);
 		const estimate = list.reduce(
 			(sum, c) =>
 				sum +
@@ -506,7 +630,7 @@ function AgreementModal({
 		// Suggest the new amount; the administradora can still change it.
 		const updated = sums(next);
 		setTotal(
-			updated.list.length
+			updated.original > 0
 				? centsToMoneyInput(updated.original + updated.estimate)
 				: "",
 		);
@@ -526,13 +650,17 @@ function AgreementModal({
 		[totalCents, downPaymentCents, n],
 	);
 
-	const create = api.delinquency.createAgreement.useMutation({
+	const createAgreement = api.delinquency.createAgreement.useMutation({
 		onSuccess: onCreated,
 	});
+	const renegotiate = api.delinquency.renegotiateAgreement.useMutation({
+		onSuccess: onCreated,
+	});
+	const create = replacing ? renegotiate : createAgreement;
 	const errors = fieldErrors(create.error);
 
 	const valid =
-		chosen.length > 0 &&
+		(chosen.length > 0 || saldoCents > 0) &&
 		totalCents > 0 &&
 		downPaymentCents < totalCents &&
 		n >= 1 &&
@@ -543,34 +671,65 @@ function AgreementModal({
 			open
 			onOpenChange={(open) => !open && onClose()}
 			size="lg"
-			title={`Acordo · Unidade ${unitLabel(row.unit)}`}
+			title={`${replacing ? "Renegociar saldo" : "Acordo"} · Unidade ${unitLabel(unit)}`}
 			description={
-				row.payer
-					? `Responsável: ${row.payer.name}`
-					: "A unidade não tem responsável financeiro."
+				payerName
+					? `Responsável: ${payerName}`
+					: replacing
+						? "O acordo atual é encerrado e substituído por este."
+						: "A unidade não tem responsável financeiro."
 			}
 		>
 			<form
 				className="space-y-5"
 				onSubmit={(event) => {
 					event.preventDefault();
-					create.mutate({
-						condominiumId,
-						unitId: row.unit.id,
-						chargeIds: chosen.map((c) => c.id),
+					const common = {
 						totalCents,
 						downPaymentCents,
 						downPaymentDueDate: downPaymentCents > 0 ? entradaDue : null,
 						installments: n,
 						notes: notes.trim() || null,
-					});
+					};
+					if (replacing) {
+						renegotiate.mutate({
+							agreementId: replacing.id,
+							extraChargeIds: chosen.map((c) => c.id),
+							...common,
+						});
+					} else {
+						createAgreement.mutate({
+							condominiumId,
+							unitId: unit.id,
+							chargeIds: chosen.map((c) => c.id),
+							...common,
+						});
+					}
 				}}
 			>
 				<fieldset className="space-y-2">
 					<legend className="mb-2 font-medium text-sm">
 						Cobranças renegociadas
 					</legend>
-					{row.charges.map((charge) => (
+					{replacing && (
+						<div className="flex min-h-11 items-center gap-3 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+							<Checkbox checked disabled aria-label="Saldo do acordo atual" />
+							<span className="flex-1">
+								Saldo do acordo atual{" "}
+								<span className="text-muted-foreground">
+									· {unbilled} parcela(s) não emitida(s)
+								</span>
+							</span>
+							<span className="font-medium">{formatBRL(saldoCents)}</span>
+						</div>
+					)}
+					{replacing && charges.length > 0 && (
+						<p className="text-muted-foreground text-xs">
+							Inclua também, se quiser, cobranças em atraso da unidade (como
+							parcelas já emitidas e não pagas):
+						</p>
+					)}
+					{charges.map((charge) => (
 						<label
 							key={charge.id}
 							htmlFor={`renegotiate-${charge.id}`}
@@ -599,6 +758,8 @@ function AgreementModal({
 						{formatBRL(estimate)} = {formatBRL(originalCents + estimate)}.
 						Estimativa: o Asaas calcula o valor exato no pagamento. As cobranças
 						escolhidas são canceladas no Asaas ao criar o acordo.
+						{replacing &&
+							" O acordo atual é encerrado: parcelas já emitidas continuam nas cobranças mensais em que estão."}
 					</p>
 				</fieldset>
 
@@ -693,7 +854,7 @@ function AgreementModal({
 						Voltar
 					</Button>
 					<Button type="submit" disabled={!valid} pending={create.isPending}>
-						Criar acordo
+						{replacing ? "Renegociar" : "Criar acordo"}
 					</Button>
 				</div>
 			</form>
@@ -809,5 +970,173 @@ function ForgiveModal({
 				</div>
 			</form>
 		</Modal>
+	);
+}
+
+const percentLabel = (rate: number) =>
+	`${(Math.round(rate * 1000) / 10).toLocaleString("pt-BR")}%`;
+
+/**
+ * Is delinquency getting better or worse: aging of the overdue amount, the
+ * month-end rate of the last 12 months (same rule as the balancete, 05) and
+ * what the acordos hold and recovered.
+ */
+function IndicatorsCard({ data }: { data: Overview }) {
+	const [active, setActive] = useState<string | null>(null);
+	const [showTable, setShowTable] = useState(false);
+	const maxAging = Math.max(1, ...data.aging.map((b) => b.cents));
+	const maxRate = Math.max(0.05, ...data.history.map((m) => m.rate));
+	const height = 120;
+	const activeMonth =
+		data.history.find((m) => m.period === active) ?? data.history.at(-1);
+
+	return (
+		<Card
+			title="Indicadores"
+			description="Inadimplência no fim de cada mês: unidades com cobrança vencida há mais de um dia e não paga até lá."
+		>
+			<div className="grid gap-6 lg:grid-cols-2">
+				<div className="space-y-3">
+					<p className="font-medium text-sm">
+						Valor vencido por tempo de atraso
+					</p>
+					<ul className="space-y-2">
+						{data.aging.map((bucket) => (
+							<li key={bucket.label} className="space-y-1 text-sm">
+								<div className="flex justify-between gap-2">
+									<span>{bucket.label}</span>
+									<span className="tabular-nums">
+										{formatBRL(bucket.cents)}
+										<span className="text-muted-foreground">
+											{" "}
+											· {bucket.charges}
+										</span>
+									</span>
+								</div>
+								<div className="h-2 rounded-full bg-muted">
+									<div
+										className="h-2 rounded-full bg-destructive/70"
+										style={{
+											width: `${bucket.cents > 0 ? Math.max(2, (bucket.cents / maxAging) * 100) : 0}%`,
+										}}
+									/>
+								</div>
+							</li>
+						))}
+					</ul>
+					<div className="grid grid-cols-3 gap-2 pt-2">
+						<Stat
+							label="Em acordos"
+							value={formatBRL(data.agreementTotals.openCents)}
+							hint="a receber"
+						/>
+						<Stat
+							label="Acordos atrasados"
+							value={formatBRL(data.agreementTotals.lateCents)}
+						/>
+						<Stat
+							label="Recuperado"
+							value={formatBRL(data.agreementTotals.recoveredCents)}
+							hint="pago em acordos"
+						/>
+					</div>
+				</div>
+
+				<div className="space-y-3">
+					<div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+						<p className="font-medium">Unidades inadimplentes, 12 meses</p>
+						<button
+							type="button"
+							className="text-muted-foreground underline-offset-2 hover:underline"
+							onClick={() => setShowTable((v) => !v)}
+						>
+							{showTable ? "Ver gráfico" : "Ver tabela"}
+						</button>
+					</div>
+					{showTable ? (
+						<div className="overflow-x-auto">
+							<table className="w-full text-sm">
+								<thead className="text-left text-muted-foreground">
+									<tr>
+										<th className="py-1.5 font-medium">Mês</th>
+										<th className="py-1.5 text-right font-medium">Unidades</th>
+										<th className="py-1.5 text-right font-medium">Taxa</th>
+										<th className="py-1.5 text-right font-medium">Vencido</th>
+									</tr>
+								</thead>
+								<tbody className="divide-y">
+									{data.history.map((m) => (
+										<tr key={m.period}>
+											<td className="py-1.5">{periodShortLabel(m.period)}</td>
+											<td className="py-1.5 text-right tabular-nums">
+												{m.units}/{m.unitsTotal}
+											</td>
+											<td className="py-1.5 text-right tabular-nums">
+												{percentLabel(m.rate)}
+											</td>
+											<td className="py-1.5 text-right tabular-nums">
+												{formatBRL(m.overdueCents)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					) : (
+						<>
+							<p className="text-sm tabular-nums" aria-live="polite">
+								{activeMonth && (
+									<>
+										<span className="font-medium">
+											{periodShortLabel(activeMonth.period)}:
+										</span>{" "}
+										{percentLabel(activeMonth.rate)} ({activeMonth.units} de{" "}
+										{activeMonth.unitsTotal}) ·{" "}
+										{formatBRL(activeMonth.overdueCents)} vencido
+									</>
+								)}
+							</p>
+							<div
+								className="flex items-end gap-0.5 border-b sm:gap-1"
+								style={{ height }}
+								onMouseLeave={() => setActive(null)}
+							>
+								{data.history.map((m) => (
+									<button
+										key={m.period}
+										type="button"
+										aria-label={`${periodShortLabel(m.period)}: ${percentLabel(m.rate)} das unidades, ${formatBRL(m.overdueCents)} vencido`}
+										onMouseEnter={() => setActive(m.period)}
+										onFocus={() => setActive(m.period)}
+										onClick={() => setActive(m.period)}
+										className="flex h-full flex-1 items-end justify-center rounded-t-sm outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-muted/70"
+										data-active={active === m.period}
+									>
+										<span
+											className="w-full max-w-5 rounded-t bg-destructive/70"
+											style={{
+												height:
+													m.rate > 0
+														? Math.max(
+																2,
+																Math.round((m.rate / maxRate) * height),
+															)
+														: 0,
+											}}
+										/>
+									</button>
+								))}
+							</div>
+							<div className="flex justify-between text-muted-foreground text-xs">
+								<span>{periodShortLabel(data.history[0]?.period ?? "")}</span>
+								<span>
+									{periodShortLabel(data.history.at(-1)?.period ?? "")}
+								</span>
+							</div>
+						</>
+					)}
+				</div>
+			</div>
+		</Card>
 	);
 }
