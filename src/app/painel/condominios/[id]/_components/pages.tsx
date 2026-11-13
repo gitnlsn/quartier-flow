@@ -19,6 +19,11 @@ import { ChargesTab, SettingsTab } from "./billing-tab";
 import { useCondo } from "./condo-context";
 import { DelinquencyTab } from "./delinquency-tab";
 import { ExpensesTab } from "./expenses-tab";
+import {
+	BalanceSheetDetail,
+	BalanceSheetsTab,
+	FinanceOverview,
+} from "./finance-tab";
 import { FollowUpTab, HistoryTab } from "./history-tab";
 import { OverviewTab } from "./overview-tab";
 import { UnitsTab } from "./units-tab";
@@ -72,10 +77,13 @@ export function OverviewPage() {
 					</span>
 				}
 			/>
-			<OverviewTab
-				condo={condo}
-				goTo={(module) => router.push(condoPath(condo.id, module))}
-			/>
+			<div className="space-y-6">
+				<OverviewTab
+					condo={condo}
+					goTo={(module) => router.push(condoPath(condo.id, module))}
+				/>
+				<FinanceOverview condo={condo} />
+			</div>
 		</>
 	);
 }
@@ -161,6 +169,24 @@ export function ExpensesPage() {
 		<>
 			<ModuleTitle title="Despesas" help="despesas-e-notas" />
 			<ExpensesTab condo={useCondo()} />
+		</>
+	);
+}
+
+export function BalanceSheetsPage() {
+	return (
+		<>
+			<ModuleTitle title="Balancetes" help="balancetes-e-prestacao-de-contas" />
+			<BalanceSheetsTab condo={useCondo()} />
+		</>
+	);
+}
+
+export function BalanceSheetPage({ period }: { period: string }) {
+	return (
+		<>
+			<ModuleTitle title="Balancete" help="balancetes-e-prestacao-de-contas" />
+			<BalanceSheetDetail condo={useCondo()} period={period} />
 		</>
 	);
 }

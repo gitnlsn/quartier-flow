@@ -3,6 +3,7 @@ import { billingRouter } from "~/server/api/routers/billing";
 import { condominiumRouter } from "~/server/api/routers/condominium";
 import { delinquencyRouter } from "~/server/api/routers/delinquency";
 import { expenseRouter } from "~/server/api/routers/expense";
+import { financeRouter } from "~/server/api/routers/finance";
 import { helloRouter } from "~/server/api/routers/hello";
 import { newsletterRouter } from "~/server/api/routers/newsletter";
 import { onboardingRouter } from "~/server/api/routers/onboarding";
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
 	condominium: condominiumRouter,
 	billing: billingRouter,
 	expense: expenseRouter,
+	finance: financeRouter,
 	platformBilling: platformBillingRouter,
 	reservation: reservationRouter,
 	delinquency: delinquencyRouter,

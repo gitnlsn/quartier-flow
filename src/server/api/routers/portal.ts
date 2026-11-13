@@ -1,4 +1,7 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+
+import { PERIOD_REGEX } from "~/lib/finance";
 
 import { TERMS_VERSION } from "~/lib/terms";
 import {
@@ -9,6 +12,24 @@ import {
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import type { db as Db } from "~/server/db";
 import { residentAgreements } from "~/server/delinquency";
+import { parseSnapshot } from "~/server/finance";
+
+/**
+ * Condominium of a unit the user lives in (or pays for). Residents only ever
+ * see that condominium's published balancetes (docs/features/05).
+ */
+async function residentCondominium(
+	db: typeof Db,
+	userId: string,
+	unitId: string,
+) {
+	const membership = await db.membership.findFirst({
+		where: { userId, unitId, endedAt: null },
+		select: { condominiumId: true },
+	});
+	if (!membership) throw new TRPCError({ code: "NOT_FOUND" });
+	return membership.condominiumId;
+}
 
 async function termsOutdated(db: typeof Db, administradoraId: string) {
 	if (!(await getActivePlan(db, administradoraId))) return false;
@@ -117,4 +138,58 @@ export const portalRouter = createTRPCRouter({
 		.query(({ ctx, input }) =>
 			residentAgreements(ctx.session.user.id, input?.unitId ?? null),
 		),
+
+	/** Published balancetes of the selected unit's condominium, newest first. */
+	balanceSheets: protectedProcedure
+		.input(z.object({ unitId: z.string() }))
+		.query(async ({ ctx, input }) => {
+			const condominiumId = await residentCondominium(
+				ctx.db,
+				ctx.session.user.id,
+				input.unitId,
+			);
+			const sheets = await ctx.db.balanceSheet.findMany({
+				where: { condominiumId, status: "published" },
+				orderBy: { period: "desc" },
+				select: { period: true, publishedAt: true, snapshot: true },
+			});
+			return sheets.map((s) => {
+				const data = parseSnapshot(s.snapshot);
+				return {
+					period: s.period,
+					publishedAt: s.publishedAt,
+					netIncomeCents: data.netIncomeCents,
+					expensesCents: data.expensesCents,
+					resultCents: data.resultCents,
+					closingCents: data.closingCents,
+				};
+			});
+		}),
+
+	/** One published balancete (drafts are never shown to residents). */
+	balanceSheet: protectedProcedure
+		.input(
+			z.object({ unitId: z.string(), period: z.string().regex(PERIOD_REGEX) }),
+		)
+		.query(async ({ ctx, input }) => {
+			const condominiumId = await residentCondominium(
+				ctx.db,
+				ctx.session.user.id,
+				input.unitId,
+			);
+			const sheet = await ctx.db.balanceSheet.findUnique({
+				where: {
+					condominiumId_period: { condominiumId, period: input.period },
+				},
+			});
+			if (sheet?.status !== "published" || !sheet.snapshot) {
+				throw new TRPCError({ code: "NOT_FOUND" });
+			}
+			return {
+				id: sheet.id,
+				publishedAt: sheet.publishedAt,
+				notes: sheet.notes,
+				data: parseSnapshot(sheet.snapshot),
+			};
+		}),
 });

@@ -9,6 +9,7 @@ import {
 	ChevronsUpDown,
 	ClipboardCheck,
 	CreditCard,
+	FileSpreadsheet,
 	FileText,
 	Home,
 	Landmark,
@@ -110,6 +111,11 @@ function buildGroups(
 						icon: <Wallet />,
 					},
 					{
+						href: condoPath(condoId, "balancetes"),
+						label: "Balancetes",
+						icon: <FileSpreadsheet />,
+					},
+					{
 						href: condoPath(condoId, "inadimplencia"),
 						label: "Inadimplência",
 						icon: <AlertTriangle />,
@@ -163,6 +169,11 @@ function buildGroups(
 					href: "/painel/cobrancas",
 					label: "Minhas cobranças",
 					icon: <Receipt />,
+				},
+				{
+					href: "/painel/balancetes",
+					label: "Balancetes",
+					icon: <FileSpreadsheet />,
 				},
 				// The selected unit's condominium has the reservations module on.
 				...(hasReservations

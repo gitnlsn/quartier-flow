@@ -12,6 +12,7 @@ export type CondoModule =
 	| "acompanhamento"
 	| "historico"
 	| "despesas"
+	| "balancetes"
 	| "inadimplencia"
 	| "reservas"
 	| "areas"
@@ -24,6 +25,7 @@ const SUFFIX: Record<CondoModule, string> = {
 	acompanhamento: "/cobrancas/acompanhamento",
 	historico: "/cobrancas/historico",
 	despesas: "/despesas",
+	balancetes: "/balancetes",
 	inadimplencia: "/inadimplencia",
 	reservas: "/reservas",
 	areas: "/reservas/areas",

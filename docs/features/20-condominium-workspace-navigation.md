@@ -15,6 +15,8 @@ Visão geral                    /painel/condominios/[id]
 FINANCEIRO
   Cobranças                    …/cobrancas  (Mês atual · Acompanhamento · Histórico)
   Despesas                     …/despesas
+  Inadimplência                …/inadimplencia
+  Balancetes                   …/balancetes  (one page per month: …/balancetes/YYYY-MM)
 OPERAÇÃO
   Reservas                     …/reservas  (Reservas · Áreas e regras)
 CADASTRO
@@ -22,12 +24,11 @@ CADASTRO
   Configurações                …/configuracoes
 MINHA ÁREA
   ▾ Unidade (picker)           ← residents: the unit Minha área belongs to
-  Início, Minhas cobranças, Reservar área comum (if that unit's condominium has it)
+  Início, Minhas cobranças, Balancetes (published only), Reservar área comum (if that unit's condominium has it)
 (no title)                     Faturas do Quartier Flow, Ajuda
 ADMINISTRADORA                 Todos os condomínios, Plano, Conta de recebimento
 ```
-Planned modules slot into the groups: Financeiro (Inadimplência 04, Balancetes 05),
-Comunidade (Avisos 07, Assembleias 12, Documentos 13), Operação (Chamados 08,
+Planned modules slot into the groups: Comunidade (Avisos 07, Assembleias 12, Documentos 13), Operação (Chamados 08,
 Ocorrências 09, Portaria 10/11, Fornecedores 14,
 Agenda 15).
 

@@ -8,6 +8,7 @@ import {
 	protectedProcedure,
 } from "~/server/api/trpc";
 import { audit } from "~/server/audit";
+import { assertMonthOpen } from "~/server/finance";
 import { attachments } from "~/server/storage";
 
 /**
@@ -54,6 +55,16 @@ export const expenseRouter = createTRPCRouter({
 				},
 			});
 
+			const sheet = await ctx.db.balanceSheet.findUnique({
+				where: {
+					condominiumId_period: {
+						condominiumId: input.condominiumId,
+						period: input.month,
+					},
+				},
+				select: { status: true },
+			});
+
 			const byCategory = new Map<string, number>();
 			for (const e of expenses) {
 				byCategory.set(
@@ -63,6 +74,8 @@ export const expenseRouter = createTRPCRouter({
 			}
 			return {
 				canManage,
+				/** The month's balancete is published: expenses are locked. */
+				locked: sheet?.status === "published",
 				expenses: expenses.map(({ attachmentName, ...e }) => ({
 					...e,
 					paidAt: e.paidAt.toISOString().slice(0, 10),
@@ -87,6 +100,7 @@ export const expenseRouter = createTRPCRouter({
 				},
 			});
 			if (!expense) throw new TRPCError({ code: "NOT_FOUND" });
+			await assertMonthOpen(expense.condominiumId, expense.paidAt);
 
 			await ctx.db.expense.delete({ where: { id: expense.id } });
 			// After the row: a leftover file is harmless, a row without its file is not.

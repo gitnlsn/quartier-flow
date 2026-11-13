@@ -14,6 +14,7 @@ import { assertCanViewCondominium, getAccess } from "~/server/access";
 import { audit } from "~/server/audit";
 import { getSession } from "~/server/auth";
 import { db } from "~/server/db";
+import { assertMonthOpen } from "~/server/finance";
 import { attachments } from "~/server/storage";
 
 const fields = z.object({
@@ -90,6 +91,12 @@ export async function POST(
 	});
 	if (!parsed.success) {
 		return json({ fieldErrors: parsed.error.flatten().fieldErrors }, 422);
+	}
+	try {
+		await assertMonthOpen(condominiumId, parsed.data.paidAt);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : "Mês fechado.";
+		return json({ fieldErrors: { paidAt: [message] } }, 422);
 	}
 
 	const file = form.get("file");

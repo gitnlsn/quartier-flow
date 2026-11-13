@@ -11,6 +11,7 @@ import {
 	MAX_ATTACHMENT_BYTES,
 } from "~/lib/expenses";
 import { type RouterOutputs, api } from "~/trpc/react";
+import { condoPath } from "../../../_components/condo-nav";
 import {
 	Badge,
 	Button,
@@ -251,6 +252,7 @@ export function ExpensesTab({ condo }: { condo: Condo }) {
 	});
 
 	const canManage = list.data?.canManage ?? condo.canManage;
+	const locked = list.data?.locked ?? false;
 
 	return (
 		<div className="space-y-4">
@@ -287,6 +289,22 @@ export function ExpensesTab({ condo }: { condo: Condo }) {
 					}}
 				/>
 			</Modal>
+
+			{locked && (
+				<p className="rounded-lg border bg-muted/50 p-3 text-sm">
+					O balancete de {formatPeriod(month)} já foi publicado, então as
+					despesas deste mês estão bloqueadas.{" "}
+					{canManage && (
+						<a
+							href={`${condoPath(condo.id, "balancetes")}/${month}`}
+							className="font-medium underline underline-offset-2"
+						>
+							Despublique o balancete
+						</a>
+					)}
+					{canManage && " para corrigir."}
+				</p>
+			)}
 
 			{list.isLoading ? (
 				<Loading />
@@ -354,7 +372,7 @@ export function ExpensesTab({ condo }: { condo: Condo }) {
 									) : (
 										<Badge tone="warning">Sem nota</Badge>
 									)}
-									{canManage && (
+									{canManage && !locked && (
 										<ConfirmButton
 											title="Excluir esta despesa?"
 											description={`${e.description} · ${formatBRL(e.amountCents)}. A nota anexada também será excluída.`}

@@ -181,6 +181,9 @@ model Condominium {
   address             String?
   /// Common area reservations module switched on (docs/features/06)
   reservationsEnabled Boolean        @default(false)
+  /// Cash on hand before Quartier Flow, the starting point of the balance (docs/features/05)
+  openingBalanceCents Int            @default(0)
+  openingBalanceDate  DateTime?      @db.Date
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -196,6 +199,7 @@ model Condominium {
   reservations  Reservation[]
   areaBlocks    AreaBlock[]
   agreements    Agreement[]
+  balanceSheets BalanceSheet[]
 
   @@index([administradoraId])
 }
@@ -619,6 +623,31 @@ model Expense {
   updatedAt DateTime @updatedAt
 
   @@index([condominiumId, paidAt])
+}
+
+/**
+ * Monthly balancete (docs/features/05). While a draft it is computed live from
+ * charges and expenses; publishing freezes the numbers in `snapshot`
+ * (BalanceSheetData, src/lib/finance.ts), which is all residents ever see.
+ * Expenses of a published month are locked until it is unpublished.
+ */
+model BalanceSheet {
+  id            String      @id @default(cuid())
+  condominiumId String
+  condominium   Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  /// YYYY-MM
+  period        String
+  /// draft | published
+  status        String      @default("draft")
+  snapshot      Json?
+  notes         String?
+  publishedAt   DateTime?
+  publishedById String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([condominiumId, period])
+  @@index([condominiumId, status])
 }
 
 // ---------------------------------------------------------------------------
