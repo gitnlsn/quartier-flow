@@ -392,23 +392,37 @@ function CondoSwitcher({
 }
 
 function SignOut({ className }: { className?: string }) {
-	const router = useRouter();
 	const [pending, setPending] = useState(false);
+	const [failed, setFailed] = useState(false);
 	return (
-		<Button
-			variant="ghost"
-			className={cn("justify-start", className)}
-			disabled={pending}
-			onClick={async () => {
-				setPending(true);
-				await authClient.signOut();
-				router.replace("/entrar");
-				router.refresh();
-			}}
-		>
-			<LogOut aria-hidden />
-			{pending ? "Saindo..." : "Sair"}
-		</Button>
+		<>
+			<Button
+				variant="ghost"
+				className={cn("justify-start", className)}
+				disabled={pending}
+				onClick={async () => {
+					setPending(true);
+					setFailed(false);
+					const { error } = await authClient.signOut();
+					if (error) {
+						// Still signed in: say so instead of bouncing back to the app.
+						setPending(false);
+						setFailed(true);
+						return;
+					}
+					// Full load: nothing cached from the session stays on screen.
+					window.location.assign("/entrar");
+				}}
+			>
+				<LogOut aria-hidden />
+				{pending ? "Saindo..." : "Sair"}
+			</Button>
+			{failed && (
+				<p role="alert" className="px-3 text-destructive text-sm">
+					Não foi possível sair. Tente novamente.
+				</p>
+			)}
+		</>
 	);
 }
 
