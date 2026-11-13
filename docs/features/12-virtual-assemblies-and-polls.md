@@ -22,6 +22,9 @@ increasing participation compared with in-person meetings.
 1. Assembly: type (ordinary/extraordinary), notice date, agenda items, voting window.
 2. One vote per unit per item, weighted by fração ideal when the convenção requires.
 3. Eligibility rules: owners only by default; delinquent units blocked if allowed (04).
+   Use `isDelinquent(unitId)` from `src/server/delinquency.ts` (already used by
+   reservations) behind a per-assembly "Bloquear unidades inadimplentes" option; legal
+   basis Código Civil art. 1.335, III. Spec in 04 → Remaining work, item 7.
 4. Proxy registration with document upload.
 5. Quorum tracking and result calculation per item.
 6. Polls: simple, non-binding, one vote per unit or per user.

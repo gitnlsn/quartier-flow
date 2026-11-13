@@ -67,6 +67,11 @@ model NotificationPreference {
 - **Charge notifications overlap with Asaas** (17): Asaas can email/SMS/WhatsApp
   payers itself. If we send charge reminders, set `notificationDisabled: true` on the
   Asaas customer; otherwise don't send our own. Never both.
+- **Today Asaas sends the payment reminders** (04, slice 1: `BillingConfig.reminder*`,
+  synced per payer by `src/server/asaas/notifications.ts`). Moving them to this service
+  is 04 → Remaining work, item 6 (`reminderSender`, `CollectionStep`, delivery log).
+  Other 04 events that should notify once this exists: acordo created/ended (resident),
+  acordo ended automatically (administradora, 04 item 5), escalation steps.
 
 ## Open questions
 - Which email and SMS providers?

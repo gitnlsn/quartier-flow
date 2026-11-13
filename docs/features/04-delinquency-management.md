@@ -1,6 +1,6 @@
 # 04 — Delinquency Management
 
-**Status:** Slice 1 implemented (Nov/2026) · **Phase:** MVP · **Depends on:** 03, 17
+**Status:** Slice 1 implemented (Nov/2026); see [Remaining work](#remaining-work) · **Phase:** MVP · **Depends on:** 03, 17
 
 ## Summary
 Track units with overdue charges and run an automatic collection schedule (régua de
@@ -34,6 +34,10 @@ cobrança). Delinquency status is also used by other features to block privilege
 7. Export of the delinquency list for legal collection.
 
 ## Data model (draft)
+> Superseded by the implementation (`Agreement`, `Charge.agreementId`,
+> `BillingConfig.reminder*` in `prisma/schema.prisma`); kept for history.
+> `CollectionStep` is still the starting point for our own reminders (item 6 below).
+
 ```prisma
 model CollectionStep {
   id            String   @id @default(cuid())
@@ -124,5 +128,149 @@ What exists:
 - New items (acordo, reservation fee) never start in a month whose due date has
   passed or whose run was already sent (`nextOpenPeriod`), so no installment is lost.
 
-Not yet: our own reminders through 16 (push), automatic break after N days, blocking
-voting (12), editing an active acordo, legal-collection workflow beyond the export.
+## Remaining work
+Ordered by priority. Items 1–5 have no dependency on unbuilt features; 6 and 7 wait for
+16 and 12.
+
+### 1. Asaas end-to-end validation (no dependency)
+**Why:** the Asaas side of slice 1 was only partly exercised on the sandbox. The entrada
+boleto and the reminder sync were tested; deleting and restoring real payments were
+not (the test charges were never on Asaas).
+**To verify on the sandbox, fixing what breaks:**
+- Acordo over charges that exist on Asaas: `DELETE /payments/{id}` on an `OVERDUE`
+  payment succeeds, the `PAYMENT_DELETED` webhook leaves the charge `renegotiated`.
+- Retry after a partial failure (one deletion fails): no duplicates, `pending` until done.
+- Cancelling a `pending` acordo: `POST /payments/{id}/restore` brings the payment back
+  as `OVERDUE` (or `PENDING`), and `PAYMENT_RESTORED` sets the matching status.
+- A charge paid between "Propor acordo" and the deletion: clear error, acordo can be
+  cancelled.
+- Forgiving a charge that is on Asaas: deleted there, stays `forgiven` after the webhook.
+- Asaas docs don't say which statuses can be deleted; record what the sandbox allows.
+
+**Done when:** each case above has run on the sandbox, the results are written down
+here, and any fix is committed.
+
+### 2. Delinquency indicators (no dependency; overlaps 05)
+**Why:** the module shows today's snapshot only. The síndico and the assembly want to
+know if delinquency is getting better or worse.
+**Sketch:**
+- Aging of the overdue amount: 0–30, 31–60, 61–90, 90+ days (from `Charge.dueDate` of
+  `overdue` charges; no schema change).
+- Monthly delinquency rate for the last 12 months: units with a charge overdue at month
+  end ÷ units. Reconstructed from charges: due before month end and not paid by then
+  (`paidAt`), excluding `canceled`/`refunded`. Renegotiated charges count as overdue
+  until their acordo's `createdAt`; forgiven ones until `forgivenAt`.
+- Amount under acordo (active, late) and recovered through acordos.
+- Optionally a shareable view for the conselho, without unit names (see LGPD below).
+
+**Done when:** the Inadimplência module shows the aging and the 12-month chart, and
+the numbers match a manual count on test data.
+
+### 3. Legal collection workflow (no dependency)
+**Why:** today the export is the last step. After that, the administradora tracks
+extrajudicial/judicial collection outside the app.
+**Sketch:**
+- Per-unit collection case with a stage (`extrajudicial` → `judicial` → `closed`), who
+  handles it (lawyer/office name), and a timeline of events: notices sent, acordos,
+  forgiveness, payments, free-text notes, attachments (reuse expense attachments
+  storage, `src/server/storage.ts`).
+  ```prisma
+  model CollectionCase {
+    id            String    @id @default(cuid())
+    condominiumId String
+    unitId        String
+    stage         String    // extrajudicial | judicial | closed
+    handler       String?   // law office / lawyer
+    openedAt      DateTime  @default(now())
+    closedAt      DateTime?
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
+    @@index([condominiumId])
+    @@index([unitId])
+  }
+  model CollectionEvent {   // timeline, append-only
+    id        String   @id @default(cuid())
+    caseId    String
+    kind      String   // note | notice | agreement | forgiveness | payment | stage
+    text      String?
+    fileKey   String?
+    actorId   String?
+    createdAt DateTime @default(now())
+    @@index([caseId])
+  }
+  ```
+- Unit "dossiê" export (PDF or CSV): debts with fine/interest estimate, acordos and
+  their installments, reminders sent, timeline, payer CPF. Admin only, audited
+  (`AuditLog`), like the current export.
+- Badge on the unit in the Inadimplência list ("Em cobrança judicial").
+- To evaluate: Asaas *negativação* (Serasa) through the API, as an extra paid
+  step _(unverified: check the Asaas docs and fees)_.
+
+**Done when:** a unit can be moved through the stages with notes and files, the
+timeline shows the automatic events, and the dossiê downloads.
+
+### 4. Edit an active acordo (no dependency)
+**Why:** today changing an acordo takes two steps: "Encerrar" (the unbilled installments
+become "Saldo do acordo encerrado") and then a new acordo over that saldo.
+**Sketch:** one action, "Renegociar saldo", that does both in one go: archives the
+current installments item, creates the saldo charge and a new acordo over it with the
+new number of installments/amount, and links the two (`Agreement.replacesId`). Reuse
+`breakAgreement` and `createAgreement` in `src/server/delinquency.ts`. The resident's
+card shows only the current acordo.
+
+**Done when:** an active acordo can be re-planned in one dialog, the history keeps both
+acordos, and the totals don't double count.
+
+### 5. Automatic end of an acordo (no dependency; off by default)
+**Why:** some administradoras want a rule ("acordo quebra após 30 dias de atraso")
+instead of deciding case by case. Slice 1 keeps it manual on purpose.
+**Sketch:** `BillingConfig.agreementAutoBreakDays Int?` (null = off), set in
+Configurações → Lembretes/Inadimplência. A daily cron (new `/api/cron/delinquency`, same
+auth and `?date=` simulation as `/api/cron/billing`) calls `breakAgreement` with a
+system actor when an installment or the entrada is overdue for more than N days.
+Idempotent (only `active` acordos), audited with `actorUserId: null`. Notify the
+administradora (16) when available.
+
+**Done when:** with the setting on, an acordo with an installment overdue past N days
+is ended by the cron exactly once, and nothing happens with the setting off.
+
+### 6. Our own reminders (depends on 16)
+**Why:** Asaas reminders cost per message, are limited to 2 slots per side of the due
+date, and are configured per payer (a payer in two condominiums gets the settings saved
+last). With 16 we can send push/email ourselves.
+**Sketch:**
+- `BillingConfig.reminderSender = "asaas" | "app"`. When `app`, set
+  `notificationDisabled: true` on the payer's Asaas customer (customer-level: affects
+  every condominium the payer is in; switch per administradora, not per condominium,
+  or accept the trade-off). Never both senders at once (17).
+- Steps from the draft `CollectionStep` model above (any offset, channels per step),
+  sent by a daily cron, idempotent through a unique (chargeId, stepId) delivery log.
+- Escalation step (e.g. D+30) notifies the administradora/síndico, not the resident.
+- Message templates must not expose the debt to anyone but the payer.
+
+**Done when:** a condominium on `app` gets the configured reminders exactly once per
+step and Asaas sends none.
+
+### 7. Block voting for delinquent units (depends on 12)
+**Why:** the Código Civil (art. 1.335, III) gives the vote to the owner who is "quite"
+(up to date), and many convenções apply it.
+**Sketch:** per-assembly option "Bloquear unidades inadimplentes" (like the common
+areas' `blockDelinquent`), checked with `isDelinquent(unitId)` when the vote is cast;
+the resident sees why they can't vote. Validate the rule with a lawyer (open question
+above).
+
+**Done when:** in an assembly with the option on, a delinquent unit can't vote and is
+told why; with it off, it votes normally.
+
+### Known limitations of slice 1
+- Asaas reminders are per payer, not per condominium (see item 6).
+- We don't collect phone numbers, so SMS/WhatsApp only reach payers whose Asaas
+  customer has a phone; the others get email only.
+- "Saldo do acordo encerrado" isn't on Asaas, so it can't be paid directly: it goes
+  into a new acordo or is forgiven. A future "Emitir boleto do saldo" would fix that.
+- The fine/interest shown when proposing an acordo is an estimate; Asaas computes the
+  real value at payment.
+- The resident isn't notified when an acordo is created or ended (needs 16, or a
+  transactional email through `src/server/auth/messaging.ts`).
+- Forgiveness can't be undone.
+- Penalty rules (fine cap, interest) still need legal review before launch.
