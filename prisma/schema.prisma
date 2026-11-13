@@ -53,6 +53,7 @@ model User {
   memberships         Membership[]
   paymentCustomer     PaymentCustomer?
   agreementsCreated   Agreement[]            @relation("AgreementCreatedBy")
+  notifications       Notification[]
 
   @@unique([email])
   @@map("user")
@@ -740,4 +741,62 @@ model Reservation {
   @@index([areaId, startsAt])
   @@index([condominiumId, startsAt])
   @@index([unitId])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications (docs/features/16). One inbox row per recipient (always on),
+// plus one delivery per extra channel (only email for now), retried by
+// /api/cron/notifications. Text is rendered when created: later edits of the
+// source record don't change what the user received.
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Key of NOTIFICATION_TYPES (src/lib/notifications.ts)
+  type          String
+  title         String
+  body          String
+  /// Deep link inside the app (/painel/...)
+  url           String?
+  condominiumId String?
+  data          Json?
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  deliveries NotificationDelivery[]
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model NotificationDelivery {
+  id             String       @id @default(cuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel        String // email
+  status         String       @default("pending") // pending | sent | failed | skipped
+  attempts       Int          @default(0)
+  nextAttemptAt  DateTime     @default(now())
+  error          String?
+  providerId     String? // SendPulse message id
+  sentAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([notificationId])
+}
+
+/// A user's channels for one type; only stored when they differ from the
+/// catalog's defaults.
+model NotificationPreference {
+  userId    String
+  type      String
+  channels  String[]
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, type])
 }

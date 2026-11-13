@@ -735,6 +735,35 @@ export const HELP_ARTICLES: HelpArticle[] = [
 		],
 		related: ["acompanhar-pagamentos", "despesas-e-notas"],
 	},
+	{
+		slug: "notificacoes",
+		category: "moradores",
+		title: "Notificações e emails",
+		summary:
+			"Onde ver os avisos do Quartier Flow e como escolher o que chega por email.",
+		audience: "Todos",
+		steps: [
+			{
+				title: "Veja suas notificações",
+				text: "O sino ao lado do nome Quartier Flow mostra quantas notificações você ainda não leu. Clique nele para abrir a lista: tocar em uma notificação abre a tela relacionada, como Reservas ou Minhas cobranças. Use “Marcar todas como lidas” para limpar o contador.",
+			},
+			{
+				title: "Escolha o que chega por email",
+				text: "Em Notificações, clique em “Preferências”. Cada tipo de aviso tem uma chave “Email”: desligada, o aviso continua aparecendo no app, mas não chega mais por email.",
+			},
+		],
+		faqs: [
+			{
+				q: "Que avisos eu recebo?",
+				a: "Moradores: reserva aprovada, recusada ou cancelada pela administração e acordos de pagamento registrados ou encerrados. Administradora e síndico: reservas aguardando aprovação e reservas canceladas pelo morador.",
+			},
+			{
+				q: "Não recebi o email.",
+				a: "Confira a caixa de spam e as Preferências. A notificação sempre aparece também no app, no sino.",
+			},
+		],
+		related: ["reservas-de-areas-comuns", "pagar-cobrancas"],
+	},
 ];
 
 export const getHelpArticle = (slug: string) =>

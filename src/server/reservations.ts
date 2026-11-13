@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 
+import { condoPath } from "~/app/painel/_components/condo-nav";
 import { formatDate } from "~/lib/br";
 import {
 	ACTIVE_STATUSES,
@@ -21,6 +22,11 @@ import { audit } from "~/server/audit";
 import { nextOpenPeriod, refreshDraftRun } from "~/server/billing/runs";
 import { db } from "~/server/db";
 import { isDelinquent } from "~/server/delinquency";
+import { notify } from "~/server/notifications";
+import {
+	condominiumManagers,
+	unitResidents,
+} from "~/server/notifications/recipients";
 
 /**
  * Common area reservations (docs/features/06): who may manage them, the
@@ -117,6 +123,81 @@ export function activeBlocks(
 
 export const unitLabel = (unit: { block: string; number: string }) =>
 	unit.block ? `${unit.block} · ${unit.number}` : unit.number;
+
+type ReservationEvent =
+	| "requested"
+	| "approved"
+	| "rejected"
+	| "canceled"
+	| "canceled_by_resident";
+
+/**
+ * Tells the other side about a booking (docs/features/16): managers about
+ * requests and residents' cancellations, the resident who booked (or, if
+ * unknown, the unit's residents) about the managers' decisions.
+ */
+async function notifyReservation(
+	event: ReservationEvent,
+	reservationId: string,
+	actorUserId: string,
+	reason?: string | null,
+) {
+	const r = await db.reservation.findUnique({
+		where: { id: reservationId },
+		select: {
+			condominiumId: true,
+			unitId: true,
+			requestedById: true,
+			startsAt: true,
+			endsAt: true,
+			area: { select: { name: true, slotType: true } },
+			unit: { select: { block: true, number: true } },
+		},
+	});
+	if (!r) return;
+	const when = slotLabel(r.area.slotType, r.startsAt, r.endsAt);
+	const unit = unitLabel(r.unit);
+	const toManagers = event === "requested" || event === "canceled_by_resident";
+	const userIds = toManagers
+		? await condominiumManagers(r.condominiumId)
+		: r.requestedById
+			? [r.requestedById]
+			: await unitResidents(r.unitId);
+	const note = reason ? `\n\nMotivo: ${reason}` : "";
+	const text: Record<ReservationEvent, { title: string; body: string }> = {
+		requested: {
+			title: `Reserva aguardando aprovação: ${r.area.name}`,
+			body: `A unidade ${unit} pediu ${r.area.name} para ${when}. Aprove ou recuse em Reservas.`,
+		},
+		canceled_by_resident: {
+			title: `Reserva cancelada: ${r.area.name}`,
+			body: `A unidade ${unit} cancelou a reserva de ${r.area.name} para ${when}.`,
+		},
+		approved: {
+			title: `Reserva aprovada: ${r.area.name}`,
+			body: `Sua reserva de ${r.area.name} para ${when} foi aprovada.`,
+		},
+		rejected: {
+			title: `Reserva recusada: ${r.area.name}`,
+			body: `Sua reserva de ${r.area.name} para ${when} foi recusada.${note}`,
+		},
+		canceled: {
+			title: `Reserva cancelada: ${r.area.name}`,
+			body: `A administração cancelou sua reserva de ${r.area.name} para ${when}.${note}`,
+		},
+	};
+	await notify({
+		userIds,
+		type: `reservation.${event}`,
+		...text[event],
+		url: toManagers
+			? condoPath(r.condominiumId, "reservas")
+			: "/painel/reservas",
+		condominiumId: r.condominiumId,
+		data: { reservationId },
+		excludeUserId: actorUserId,
+	});
+}
 
 /**
  * Confirms a reservation: adds the fee (if any) as a one-off item of the unit
@@ -292,6 +373,9 @@ export async function book(input: {
 			status: area.requiresApproval ? "pending" : "confirmed",
 		},
 	});
+	if (area.requiresApproval) {
+		await notifyReservation("requested", result.reservation.id, input.userId);
+	}
 	return {
 		id: result.reservation.id,
 		status: area.requiresApproval ? "pending" : "confirmed",
@@ -333,6 +417,7 @@ export async function approve(id: string, actorUserId: string) {
 		entityId: id,
 		data: { feeCents: reservation.feeCents, feePeriod: period },
 	});
+	await notifyReservation("approved", id, actorUserId);
 	return { feePeriod: period };
 }
 
@@ -452,5 +537,19 @@ export async function cancel(input: {
 			feeKept,
 		},
 	});
+	if (canManage) {
+		await notifyReservation(
+			input.reject ? "rejected" : "canceled",
+			reservation.id,
+			input.actorUserId,
+			input.reason,
+		);
+	} else if (reservation.status === "confirmed") {
+		await notifyReservation(
+			"canceled_by_resident",
+			reservation.id,
+			input.actorUserId,
+		);
+	}
 	return { feeKept };
 }

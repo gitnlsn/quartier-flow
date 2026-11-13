@@ -229,15 +229,15 @@ Configurações → Lembretes/Inadimplência. A daily cron (new `/api/cron/delin
 auth and `?date=` simulation as `/api/cron/billing`) calls `breakAgreement` with a
 system actor when an installment or the entrada is overdue for more than N days.
 Idempotent (only `active` acordos), audited with `actorUserId: null`. Notify the
-administradora (16) when available.
+administradora with `notify()` (16).
 
 **Done when:** with the setting on, an acordo with an installment overdue past N days
 is ended by the cron exactly once, and nothing happens with the setting off.
 
-### 6. Our own reminders (depends on 16)
+### 6. Our own reminders (16 slice 1 is in: inbox + email)
 **Why:** Asaas reminders cost per message, are limited to 2 slots per side of the due
 date, and are configured per payer (a payer in two condominiums gets the settings saved
-last). With 16 we can send push/email ourselves.
+last). With 16 we can send email (push later) ourselves via `notify()`.
 **Sketch:**
 - `BillingConfig.reminderSender = "asaas" | "app"`. When `app`, set
   `notificationDisabled: true` on the payer's Asaas customer (customer-level: affects

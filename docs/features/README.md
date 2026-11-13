@@ -36,7 +36,7 @@ in Nov/2026. Items marked _(market practice, unverified)_ were not confirmed by 
 | [13](13-condominium-documents.md) | Condominium documents | Post-MVP | 02 |
 | [14](14-service-providers-and-inventory.md) | Service providers & inventory | Post-MVP | 02 |
 | [15](15-manager-task-calendar.md) | Manager task calendar | Post-MVP | 02 |
-| [16](16-notifications.md) | Notifications (push, email, SMS) | MVP (cross-cutting) | 01 |
+| [16](16-notifications.md) | Notifications (push, email, SMS) | MVP (cross-cutting) — implemented slice 1 (inbox + email) | 01 |
 | [17](17-asaas-payments-platform.md) | Asaas payments platform (all money flows) | MVP (foundation, cross-cutting) — implemented slice 1 (sandbox) | 02 |
 | [18](18-platform-billing.md) | Platform billing (seats + add-ons) | MVP — monthly invoices implemented | 02, 17, 19 |
 | [19](19-administradora-manager-area.md) | App area for all users + administradora management | MVP — implemented slice 1 | 01, 02, 17, 18 |

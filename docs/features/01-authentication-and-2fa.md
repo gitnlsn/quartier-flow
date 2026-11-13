@@ -48,7 +48,7 @@ To build together with feature 02 (roles and memberships don't exist yet).
 | File | Purpose |
 |---|---|
 | `src/server/auth/index.ts` | Better Auth server config, `getSession()` helper |
-| `src/server/auth/messaging.ts` | Email/SMS delivery. **Dev: prints to console. Prod: throws until a provider is wired.** |
+| `src/server/auth/messaging.ts` | Email via SendPulse (16); dev without `SEND_PULSE_API_KEY` prints to console. SMS: no provider yet (throws in prod). |
 | `src/app/api/auth/[...all]/route.ts` | Auth HTTP endpoints |
 | `src/lib/auth-client.ts` | Browser client |
 | `src/app/entrar/` | Sign-in page and link confirmation page |

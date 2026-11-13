@@ -3,6 +3,10 @@
 		"asaas": {
 			"type": "http",
 			"url": "https://docs.asaas.com/mcp"
+		},
+		"sp": {
+			"type": "http",
+			"url": "https://mcp.sendpulse.com/mcp"
 		}
 	}
 }

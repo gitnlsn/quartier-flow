@@ -32,6 +32,9 @@ Planned modules slot into the groups: Comunidade (Avisos 07, Assembleias 12, Doc
 Ocorrências 09, Portaria 10/11, Fornecedores 14,
 Agenda 15).
 
+Notifications (16) aren't a module: a bell next to the brand (sidebar on desktop, top
+bar on phones) opens `/painel/notificacoes`, with the unread count.
+
 ## Rules
 - The condominium is always in the URL (shareable links, back button, notification
   deep links). The last one opened is remembered (`qf_condo` cookie) so pages outside

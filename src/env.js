@@ -34,6 +34,19 @@ export const env = createEnv({
 
 		DATABASE_URL: z.string().url(),
 
+		// SendPulse transactional email (docs/features/16): Settings > API > API keys.
+		// Unset in development: emails are printed to the console instead.
+		SEND_PULSE_API_KEY:
+			process.env.NODE_ENV === "production"
+				? z.string()
+				: z.string().optional(),
+		// Verified sender in SendPulse (e.g. avisos@quartierflow.com.br).
+		EMAIL_FROM:
+			process.env.NODE_ENV === "production"
+				? z.string().email()
+				: z.string().email().optional(),
+		EMAIL_FROM_NAME: z.string().default("Quartier Flow"),
+
 		// Neon Object Storage (S3-compatible), pulled by `neon env pull` / `neon deploy`.
 		AWS_ACCESS_KEY_ID: z.string(),
 		AWS_SECRET_ACCESS_KEY: z.string(),
@@ -72,6 +85,10 @@ export const env = createEnv({
 		CRON_SECRET: process.env.CRON_SECRET,
 
 		DATABASE_URL: process.env.DATABASE_URL,
+
+		SEND_PULSE_API_KEY: process.env.SEND_PULSE_API_KEY,
+		EMAIL_FROM: process.env.EMAIL_FROM,
+		EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME,
 
 		AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
 		AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,

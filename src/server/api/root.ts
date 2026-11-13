@@ -6,6 +6,7 @@ import { expenseRouter } from "~/server/api/routers/expense";
 import { financeRouter } from "~/server/api/routers/finance";
 import { helloRouter } from "~/server/api/routers/hello";
 import { newsletterRouter } from "~/server/api/routers/newsletter";
+import { notificationRouter } from "~/server/api/routers/notification";
 import { onboardingRouter } from "~/server/api/routers/onboarding";
 import { platformBillingRouter } from "~/server/api/routers/platform-billing";
 import { portalRouter } from "~/server/api/routers/portal";
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
 	platformBilling: platformBillingRouter,
 	reservation: reservationRouter,
 	delinquency: delinquencyRouter,
+	notification: notificationRouter,
 });
 
 // export type definition of API

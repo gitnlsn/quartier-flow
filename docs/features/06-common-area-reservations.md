@@ -62,7 +62,11 @@ following rules the síndico defines. Staff are notified to prepare the space.
   `…/reservas/areas` (areas and rules); `/painel/reservas` for residents (areas, month
   calendar, booking, "Minhas reservas", cancel within the deadline).
 
-**Not yet:** photos, staff role and notifications (16), post-use inspection checklist,
+- **Notifications (16):** requests awaiting approval go to the managers; approvals,
+  rejections and cancellations by the administration go to the resident who booked;
+  a resident canceling a confirmed booking notifies the managers.
+
+**Not yet:** photos, staff role and staff notifications, post-use inspection checklist,
 managers booking on behalf of a unit, fee via a separate Pix charge.
 
 ## Data model (draft)

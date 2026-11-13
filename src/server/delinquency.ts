@@ -23,6 +23,7 @@ import {
 	sendContext,
 } from "~/server/billing/runs";
 import { db } from "~/server/db";
+import { notify } from "~/server/notifications";
 
 /**
  * Delinquency management (docs/features/04): the delinquency rule other
@@ -593,6 +594,16 @@ export async function finalizeAgreement(
 			entityId: agreement.id,
 			data: { renegotiated: agreement.originalCharges.map((c) => c.id) },
 		});
+		await notify({
+			userIds: [agreement.payerUserId],
+			type: "agreement.created",
+			title: "Acordo de pagamento registrado",
+			body: `Foi registrado um acordo de pagamento para a unidade ${unitLabel(agreement.unit)} em ${agreement.condominium.name}. Veja as parcelas e os vencimentos em Minhas cobranças.`,
+			url: "/painel/cobrancas",
+			condominiumId: agreement.condominiumId,
+			data: { agreementId: agreement.id },
+			excludeUserId: actorUserId,
+		});
 	}
 
 	// Issue the entrada (first time, or again after a failure).
@@ -707,6 +718,16 @@ export async function breakAgreement(agreementId: string, actorUserId: string) {
 		entity: "agreement",
 		entityId: agreement.id,
 		data: { unbilledInstallments: unbilled, balanceChargeId },
+	});
+	await notify({
+		userIds: [agreement.payerUserId],
+		type: "agreement.broken",
+		title: "Acordo de pagamento encerrado",
+		body: `O acordo de pagamento da unidade ${unitLabel(agreement.unit)} em ${agreement.condominium.name} foi encerrado.${unbilled > 0 ? " As parcelas que faltavam voltaram a constar como débito em aberto." : ""} Em caso de dúvida, fale com a administração do condomínio.`,
+		url: "/painel/cobrancas",
+		condominiumId: agreement.condominiumId,
+		data: { agreementId: agreement.id },
+		excludeUserId: actorUserId,
 	});
 }
 

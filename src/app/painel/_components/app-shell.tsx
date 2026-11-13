@@ -52,6 +52,7 @@ import {
 	parseCondoPath,
 	switchPath,
 } from "./condo-nav";
+import { NotificationBell } from "./notification-bell";
 import { UnitProvider, UnitSwitcher, useSelectedUnit } from "./unit-context";
 
 type NavItem = {
@@ -562,7 +563,10 @@ function Shell({
 		<div className="app min-h-screen">
 			{/* Desktop sidebar */}
 			<aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r bg-card p-4 md:flex">
-				<div className="mb-4 px-3">{brand}</div>
+				<div className="mb-4 flex items-start justify-between gap-2 pl-3">
+					{brand}
+					<NotificationBell className="-mt-2" />
+				</div>
 				{switcher && <div className="mb-6">{switcher}</div>}
 				<div className="flex-1 overflow-y-auto">
 					<NavLinks groups={groups} />
@@ -590,11 +594,12 @@ function Shell({
 				) : (
 					// Residents only: their unit takes the switcher's place.
 					selectedUnit && (
-						<div className="w-1/2 max-w-56 shrink-0">
+						<div className="ml-auto w-1/2 max-w-56 shrink-0">
 							<UnitSwitcher />
 						</div>
 					)
 				)}
+				<NotificationBell className="-mr-2" />
 			</header>
 
 			<main
